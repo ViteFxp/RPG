@@ -1,256 +1,49 @@
-import time
-import random
-import os
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RPG de Texto Web</title>
+    <link rel="stylesheet" href="style.css"> 
+</head>
+<body>
 
-# --- FUNÇÕES DE UTILIDADE ---
+    <header>
+        <h1>⚔️ A Lenda do Herói Web 📜</h1>
+    </header>
 
-def limpar_tela():
-    """Limpa o console para melhor visualização do jogo."""
-    # O comando 'clear' funciona no PythonAnywhere e na maioria dos terminais
-    if os.name == 'nt':
-        os.system('cls')
-    else:
-        os.system('clear')
+    <div class="container">
+        <div id="game-area">
+            <div id="player-stats" class="stats-box">
+                <h2>Herói</h2>
+                <p>Nome: <span id="player-name"></span></p>
+                <p>Nível: <span id="player-lvl"></span></p>
+                <p>HP: <span id="player-hp"></span>/<span id="player-hp-max"></span></p>
+                <p>EXP: <span id="player-exp"></span>/<span id="player-exp-next"></span></p>
+                <p>Ouro: <span id="player-gold"></span> | Poções: <span id="player-potions"></span></p>
+            </div>
 
-def esperar(segundos=1):
-    """Pausa a execução para que o jogador possa ler o texto."""
-    time.sleep(segundos)
+            <div id="enemy-stats" class="stats-box">
+                <h2>Inimigo</h2>
+                <p>Nome: <span id="enemy-name">---</span></p>
+                <p>HP: <span id="enemy-hp">---</span></p>
+            </div>
 
-# --- 1. CLASSE BASE ---
-class Personagem:
-    def __init__(self, nome, vida, ataque, defesa):
-        self.nome = nome
-        self.vida = vida
-        self.vida_max = vida
-        self.ataque = ataque
-        self.defesa = defesa
-        self.lvl = 1
+            <div id="log-box">
+                <p>Bem-vindo! Digite seu nome para começar.</p>
+            </div>
 
-    def esta_vivo(self):
-        return self.vida > 0
+            <div id="action-area">
+                <input type="text" id="name-input" placeholder="Digite seu nome">
+                <button onclick="startGame()">Começar Aventura</button>
+            </div>
+        </div>
+    </div>
 
-    def sofrer_dano(self, dano):
-        # A defesa reduz uma parte fixa do dano
-        dano_recebido = max(0, dano - self.defesa)
-        self.vida -= dano_recebido
-        print(f"-> {self.nome} sofreu {dano_recebido} de dano!")
-        return dano_recebido
+    <footer>
+        <p>Projeto RPG para GitHub Pages.</p>
+    </footer>
 
-# --- 2. CLASSE DO JOGADOR ---
-class Jogador(Personagem):
-    def __init__(self, nome):
-        # Stats iniciais: Vida, Ataque, Defesa
-        super().__init__(nome, 120, 18, 5)
-        self.exp = 0
-        self.exp_para_proximo_lvl = 100
-        self.pocao_pequena = 2 # Começa com 2 poções
-        self.dinheiro = 50 # Dinheiro inicial para a loja
-
-    def mostrar_status(self):
-        limpar_tela()
-        print("="*40)
-        print(f"** PERFIL: {self.nome} **")
-        print(f"Nível: {self.lvl}")
-        print(f"HP: {self.vida}/{self.vida_max}")
-        print(f"EXP: {self.exp}/{self.exp_para_proximo_lvl}")
-        print(f"ATK: {self.ataque} | DEF: {self.defesa}")
-        print(f"Ouro: {self.dinheiro} | Poções: {self.pocao_pequena}")
-        print("="*40)
-        esperar(2)
-
-    def usar_pocao(self):
-        if self.pocao_pequena > 0:
-            cura = random.randint(25, 40)
-            self.vida = min(self.vida_max, self.vida + cura)
-            self.pocao_pequena -= 1
-            print(f"[CURA] Você usou uma Poção e recuperou {cura} HP!")
-            print(f"HP atual: {self.vida}/{self.vida_max}. Poções restantes: {self.pocao_pequena}")
-            return True
-        else:
-            print("[ATENÇÃO] Você não tem poções restantes!")
-            return False
-
-    def ganhar_exp(self, exp_ganha):
-        self.exp += exp_ganha
-        print(f"--- Você ganhou {exp_ganha} EXP! ---")
-        self.verificar_lvl_up()
-
-    def verificar_lvl_up(self):
-        while self.exp >= self.exp_para_proximo_lvl:
-            self.lvl += 1
-            self.exp -= self.exp_para_proximo_lvl
-            self.exp_para_proximo_lvl = int(self.exp_para_proximo_lvl * 1.5)
-            
-            # Aumentar stats
-            self.vida_max += 25
-            self.vida = self.vida_max
-            self.ataque += 6
-            self.defesa += 3
-            
-            print("\n" + "*"*40)
-            print(f"** LVL UP! Você alcançou o Nível {self.lvl}! **")
-            print("HP, Ataque e Defesa melhorados!")
-            print("*"*40 + "\n")
-            self.mostrar_status()
-
-# --- 3. CLASSE DO MONSTRO ---
-class Monstro(Personagem):
-    def __init__(self, lvl):
-        # Nomes e stats baseados no level
-        nome = random.choice(["Goblin Astuto", "Slime Venenoso", "Orc Selvagem", "Serpente das Sombras"])
-        vida = 30 + (lvl * 18)
-        ataque = 10 + (lvl * 4)
-        defesa = 3 + lvl
-        
-        super().__init__(nome, vida, ataque, defesa)
-        self.lvl = lvl
-        self.exp_recompensa = 60 + (lvl * 20)
-        self.dinheiro_recompensa = random.randint(5 * lvl, 15 * lvl)
-
-# --- 4. FUNÇÃO DE COMBATE ---
-def iniciar_combate(jogador, monstro):
-    limpar_tela()
-    print("\n" + "!"*40)
-    print(f"!!! Um {monstro.nome} (LVL {monstro.lvl}) apareceu! Prepare-se! !!!")
-    print("!"*40)
-    esperar(1.5)
-    
-    while jogador.esta_vivo() and monstro.esta_vivo():
-        
-        # Status da Luta
-        print("\n" + "-"*30)
-        print(f"[HP] {jogador.nome}: {jogador.vida}/{jogador.vida_max} | {monstro.nome}: {monstro.vida}/{monstro.vida_max}")
-        print("-"*30)
-
-        # Turno do Jogador
-        print("\n--- Seu Turno ---")
-        print("1. Ataque Normal (Dano equilibrado)")
-        print("2. Ataque Poderoso (Alto Dano, 20% de chance de falha)")
-        print(f"3. Usar Poção (Cura, restantes: {jogador.pocao_pequena})")
-        
-        escolha = input("Escolha sua Ação (1/2/3): ").strip()
-        
-        turno_valido = True
-        
-        if escolha == '1':
-            dano = random.randint(jogador.ataque - 5, jogador.ataque + 5)
-            print("Você ataca com precisão...")
-            monstro.sofrer_dano(dano)
-
-        elif escolha == '2':
-            if random.random() < 0.20: # 20% de chance de falha
-                 print("Seu ataque poderoso falhou miseravelmente! Você perdeu o turno.")
-            else:
-                dano = random.randint(jogador.ataque + 5, jogador.ataque + 15)
-                print("Você concentra sua força e lança um ataque devastador...")
-                monstro.sofrer_dano(dano)
-
-        elif escolha == '3':
-            # Se usar poção e falhar (sem estoque), não perde o turno de ataque, mas o monstro ainda ataca.
-            if not jogador.usar_pocao(): 
-                turno_valido = False # Não gasta o tempo de espera
-
-        else:
-            print("Ação inválida. Você hesitou e perdeu o turno!")
-            turno_valido = False
-            
-        if turno_valido:
-            esperar(1.5)
-
-        if not monstro.esta_vivo():
-            print("\n*** VITÓRIA! O monstro foi derrotado! ***")
-            jogador.ganhar_exp(monstro.exp_recompensa)
-            jogador.dinheiro += monstro.dinheiro_recompensa
-            print(f"[RECOMPENSA] Você ganhou {monstro.dinheiro_recompensa} Ouro.")
-            break
-            
-        # Turno do Monstro
-        if monstro.esta_vivo():
-            print("\n--- Turno do Monstro ---")
-            dano_monstro = random.randint(monstro.ataque - 3, monstro.ataque + 3)
-            jogador.sofrer_dano(dano_monstro)
-            esperar(1.5)
-
-        if not jogador.esta_vivo():
-            print("\n*** GAME OVER! Você foi derrotado em combate! ***")
-            break
-            
-    esperar(2)
-
-# --- 5. FUNÇÃO DE LOJA ---
-def visitar_loja(jogador):
-    limpar_tela()
-    print("\n" + "--- BEM-VINDO À TAVERNA DO FERREIRO ---")
-    
-    preco_pocao = 30
-    
-    while True:
-        print(f"\nSeu Ouro: {jogador.dinheiro}")
-        print("O que você deseja comprar?")
-        print(f"1. Poção Pequena de Cura ({preco_pocao} Ouro)")
-        print(f"2. Sair da Loja (Poções no inventário: {jogador.pocao_pequena})")
-        
-        escolha = input("Ação (1/2): ").strip()
-        
-        if escolha == '1':
-            if jogador.dinheiro >= preco_pocao:
-                jogador.dinheiro -= preco_pocao
-                jogador.pocao_pequena += 1
-                print(f"[COMPRA] Poção adquirida. Ouro restante: {jogador.dinheiro}.")
-            else:
-                print("[ATENÇÃO] Ouro insuficiente! Volte depois de caçar mais.")
-        elif escolha == '2':
-            print("Obrigado pela visita, aventureiro! Boa sorte na caçada.")
-            esperar(1)
-            break
-        else:
-            print("Comando inválido.")
-
-# --- 6. LOOP PRINCIPAL DO JOGO ---
-def jogar():
-    limpar_tela()
-    print("="*40)
-    print("BEM-VINDO AO RPG DE TEXTO SIMPLES!")
-    print("="*40)
-    nome_jogador = input("Digite o nome do seu Herói: ").strip()
-    jogador = Jogador(nome_jogador)
-    
-    # Mensagem de introdução
-    jogador.mostrar_status()
-    print("Sua aventura começa agora. Prepare-se para caçar!")
-
-    while jogador.esta_vivo():
-        limpar_tela()
-        print("\n" + "="*40)
-        print("O que você fará em seguida?")
-        print("1. Caçar (Encontrar um monstro)")
-        print("2. Visitar a Loja")
-        print("3. Ver Status do Herói")
-        print("4. Sair do jogo")
-        print("="*40)
-        
-        escolha_principal = input("Escolha uma opção (1/2/3/4): ").strip()
-
-        if escolha_principal == '1':
-            # Gera um monstro baseado no nível do jogador
-            lvl_monstro = random.randint(max(1, jogador.lvl - 1), jogador.lvl + 1)
-            novo_monstro = Monstro(lvl_monstro)
-            iniciar_combate(jogador, novo_monstro)
-        
-        elif escolha_principal == '2':
-            visitar_loja(jogador)
-
-        elif escolha_principal == '3':
-            jogador.mostrar_status()
-
-        elif escolha_principal == '4':
-            print(f"\nObrigado por jogar, {jogador.nome}! Seu level final foi: {jogador.lvl}")
-            break
-
-        else:
-            print("Comando inválido. Tente novamente.")
-            esperar(1)
-
-# Iniciar o jogo
-if __name__ == "__main__":
-    jogar()
+    <script src="game.js"></script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+body {
+    font-family: 'Georgia', serif;
+    background-color: #333; /* Fundo escuro */
+    color: #f4f4f4; /* Texto claro */
+    margin: 0;
+    padding: 0;
+    text-align: center;
+}
+
+header {
+    background-color: #4CAF50; /* Verde escuro */
+    padding: 15px 0;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+#game-area {
+    background-color: #212121; /* Área de jogo mais escura */
+    border: 3px solid #6c757d;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+}
+
+.stats-box {
+    border: 1px dashed #6c757d;
+    padding: 10px;
+    margin-bottom: 20px;
+    display: inline-block;
+    width: 45%;
+    text-align: left;
+}
+
+#log-box {
+    background-color: #0d0d0d;
+    color: #fff;
+    padding: 15px;
+    height: 100px;
+    overflow-y: auto;
+    margin-bottom: 20px;
+    border: 1px solid #6c757d;
+    text-align: left;
+}
+
+button {
+    background-color: #2196F3;
+    color: white;
+    padding: 10px 20px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #0b7dda;
+}
+
+input[type="text"] {
+    padding: 10px;
+    margin-right: 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
