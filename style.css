@@ -1,18 +1,18 @@
 /* Fonte Medieval (Genérica, simulada com serif) */
 body {
     font-family: 'Times New Roman', Times, serif;
-    background-color: #1a1a1a; /* Fundo muito escuro */
-    color: #e0d0a8; /* Texto amarelado (pergaminho) */
+    background-color: #1a1a1a;
+    color: #e0d0a8;
     margin: 0;
     padding: 0;
     text-align: center;
 }
 
 header {
-    background-color: #4b0000; /* Vermelho escuro/marrom */
-    color: #e0d0a8;
+    background-color: #4b0000;
+    color: #ffcc99;
     padding: 15px 0;
-    border-bottom: 3px solid #8b4513; /* Borda de madeira */
+    border-bottom: 3px solid #8b4513;
     margin-bottom: 20px;
 }
 
@@ -24,7 +24,7 @@ header {
 
 #game-area {
     background-color: #2b2b2b;
-    border: 5px solid #8b4513; /* Borda grossa de madeira */
+    border: 5px solid #8b4513;
     padding: 25px;
     border-radius: 10px;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
@@ -39,6 +39,7 @@ header {
     margin-bottom: 20px;
     border: 1px solid #555;
     text-align: left;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5); /* Sombra interna para profundidade */
 }
 
 #log-box {
@@ -50,25 +51,44 @@ header {
     margin-bottom: 20px;
     border: 1px solid #4b0000;
     text-align: left;
-    font-size: 0.9em;
+    font-size: 0.95em;
 }
 
-/* --- Botões e Ações --- */
+/* --- Botões e Ações (Menu Mais Bonito) --- */
+
+#action-area {
+    padding: 10px;
+    background-color: #1f1f1f;
+    border-radius: 5px;
+}
 
 button {
-    background-color: #4b0000; /* Botões escuros e temáticos */
+    background-color: #4b0000;
     color: #e0d0a8;
-    padding: 10px 15px;
-    margin: 5px;
-    border: 1px solid #8b4513;
-    border-radius: 3px;
+    padding: 12px 20px;
+    margin: 8px;
+    border: 2px solid #8b4513;
+    border-radius: 5px;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 1.1em;
+    font-weight: bold;
     transition: background-color 0.2s, transform 0.1s;
 }
 
 button:hover {
     background-color: #6a0000;
+    transform: translateY(-2px); 
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.5);
+}
+
+/* Botões especiais (Level Up) */
+.btn-stat {
+    background-color: #004d00;
+    padding: 5px 10px;
+    margin: 2px;
+}
+.btn-stat:hover {
+    background-color: #006600;
 }
 
 /* --- BATALHA VISUAL --- */
@@ -99,45 +119,48 @@ button:hover {
     line-height: 1;
 }
 
-/* HP BARS */
-.hp-bar-container {
-    width: 100%;
-    height: 12px;
-    background-color: #4d4d4d;
-    border: 1px solid #000;
-    margin-bottom: 5px;
-    border-radius: 5px;
+/* --- ANIMAÇÃO DE ENTRADA DO MONSTRO --- */
+
+.hidden-enemy {
+    opacity: 0;
+    transform: translateX(50px);
 }
 
-.hp-bar {
-    height: 100%;
-    background-color: #008000; /* Verde Vida */
-    width: 100%;
-    transition: width 0.5s ease-out;
-    border-radius: 5px;
+@keyframes enemy-fade-in {
+    from { opacity: 0; transform: translateX(50px); }
+    to { opacity: 1; transform: translateX(0); }
 }
 
-/* --- ANIMAÇÕES DE CSS KEYFRAMES --- */
+.monster-appeared {
+    animation: enemy-fade-in 0.5s ease-out forwards;
+}
 
-/* Ataque: Move para a frente e volta rapidamente */
+/* --- ANIMAÇÕES DE COMBATE --- */
+
 @keyframes attack-move {
     0% { transform: translateX(0); }
     50% { transform: translateX(40px) rotate(5deg); } 
     100% { transform: translateX(0); }
 }
 
-/* Dano: Tremer e Recuar levemente */
 @keyframes damage-shake {
     0%, 100% { transform: translateX(0); opacity: 1; }
     25% { transform: translateX(-8px); opacity: 0.8; }
     75% { transform: translateX(8px); opacity: 0.8; }
 }
 
-/* Classes ativadas via JavaScript */
 .attacking {
     animation: attack-move 0.3s ease-in-out;
 }
 
 .receiving-damage {
     animation: damage-shake 0.3s ease-in-out;
+}
+
+/* HP BARS (mantido) */
+.hp-bar-container {
+    width: 100%; height: 12px; background-color: #4d4d4d; border: 1px solid #000; margin-bottom: 5px; border-radius: 5px;
+}
+.hp-bar {
+    height: 100%; background-color: #008000; width: 100%; transition: width 0.5s ease-out; border-radius: 5px;
 }

@@ -1,5 +1,13 @@
 // --- DADOS E VARIÁVEIS DO JOGO ---
 
+const ZONAS = [
+    { nome: "Floresta Proibida", lvlMin: 1, inimigos: ["Goblin", "Slime", "Lobo Selvagem"], boss: { nome: "Rei Goblin", sprite: "👑" }, sprite: "🌳" },
+    { nome: "Cavernas Sombrias", lvlMin: 5, inimigos: ["Morcego Gigante", "Aranha Venenosa", "Esqueleto"], boss: { nome: "O Abominável", sprite: "💀" }, sprite: "⛰️" },
+    { nome: "Ruínas Esquecidas", lvlMin: 10, inimigos: ["Fantasma", "Golem de Pedra", "Múmia"], boss: { nome: "Lich Antigo", sprite: "👻" }, sprite: "🏛️" },
+    { nome: "Montanhas Vulcânicas", lvlMin: 15, inimigos: ["Salamandra", "Elementar de Fogo", "Dragãozinho"], boss: { nome: "Drake de Lava", sprite: "🐉" }, sprite: "🌋" },
+    { nome: "Castelo do Caos", lvlMin: 20, inimigos: ["Guarda Negro", "Demônio Menor", "Vampiro"], boss: { nome: "O Tirano Supremo", sprite: "😈" }, sprite: "🏰" }
+];
+
 const BASE_STATS = {
     'Guerreiro': { hp: 150, atk: 20, def: 10, sprite: '🛡️' },
     'Mago': { hp: 100, atk: 25, def: 5, sprite: '🔮' },
@@ -9,8 +17,9 @@ const BASE_STATS = {
 let player;
 let currentEnemy;
 let isAnimating = false;
+let zonaAtual = 0;
 
-// --- CLASSE JOGADOR ---
+// --- CLASSE JOGADOR com Sistema de Pontos ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -27,39 +36,56 @@ class Player {
         this.gold = 50;
         this.potions = 2;
         this.sprite = stats.sprite;
+        this.statPoints = 0; // Novo: Pontos de status para distribuir
     }
 
-    // SISTEMA DE LVL: Lógica para subir de nível
+    // SISTEMA DE LVL UP E PONTOS
     levelUp() {
         this.lvl++;
         this.exp -= this.expToNextLvl;
         this.expToNextLvl = Math.floor(this.expToNextLvl * 1.5);
+        this.statPoints += 5; // Ganha 5 pontos para distribuir
         
-        // Aumenta stats de acordo com a classe
-        const hpBonus = (this.class === 'Guerreiro') ? 35 : (this.class === 'Mago' ? 15 : 20);
-        const atkBonus = (this.class === 'Mago') ? 8 : 5;
-        const defBonus = (this.class === 'Guerreiro') ? 4 : 2;
-
-        this.hpMax += hpBonus;
+        // Aumento base de HP
+        this.hpMax += 10;
         this.hp = this.hpMax;
-        this.attack += atkBonus;
-        this.defense += defBonus;
-        logMessage(`** LVL UP! ** Você alcançou o Nível ${this.lvl}! Seu poder aumentou!`);
+
+        logMessage(`** LVL UP! ** Você alcançou o Nível ${this.lvl} e ganhou 5 Pontos de Habilidade!`);
+        
+        // Se estiver no menu principal, força a distribuição de pontos
+        if (!currentEnemy) {
+            showStatDistribution();
+        }
     }
 }
 
-// --- CLASSE INIMIGO ---
+// --- CLASSE INIMIGO (Mantida) ---
 class Enemy {
-    constructor(lvl) {
-        const names = ["Goblin Astuto", "Slime Venenoso", "Orc Selvagem", "Esqueleto Faminto"];
-        this.name = names[Math.floor(Math.random() * names.length)];
+    constructor(lvl, isBoss = false) {
+        const zona = ZONAS[zonaAtual];
+        let name, hpBase, atkBase, sprite;
+
+        if (isBoss) {
+            name = zona.boss.nome;
+            hpBase = 50 + (lvl * 30);
+            atkBase = 15 + (lvl * 8);
+            sprite = zona.boss.sprite;
+        } else {
+            name = zona.inimigos[Math.floor(Math.random() * zona.inimigos.length)];
+            hpBase = 30 + (lvl * 18);
+            atkBase = 10 + (lvl * 4);
+            sprite = '👹';
+        }
+
+        this.name = name;
         this.lvl = lvl;
-        this.hp = 30 + (lvl * 18);
-        this.attack = 10 + (lvl * 4);
+        this.hp = hpBase;
+        this.attack = atkBase;
         this.defense = 3 + lvl;
-        this.expReward = 60 + (lvl * 20);
-        this.goldReward = Math.floor(Math.random() * (15 * lvl)) + 10;
-        this.sprite = '👹'; 
+        this.expReward = (isBoss ? 200 : 60) + (lvl * (isBoss ? 40 : 20));
+        this.goldReward = Math.floor(Math.random() * (isBoss ? 50 : 15) * lvl) + 10;
+        this.isBoss = isBoss;
+        this.sprite = sprite;
     }
 }
 
@@ -71,7 +97,6 @@ function logMessage(message) {
     logBox.scrollTop = logBox.scrollHeight;
 }
 
-// Função para disparar animações CSS
 function triggerAnimation(targetElementId, animationClass) {
     const el = document.getElementById(targetElementId);
     el.classList.add(animationClass);
@@ -84,35 +109,32 @@ function triggerAnimation(targetElementId, animationClass) {
 function updateStats() {
     if (!player) return;
 
-    // Atualiza os stats do herói (texto)
+    document.getElementById('current-zone').textContent = ZONAS[zonaAtual].sprite + " " + ZONAS[zonaAtual].nome;
     document.getElementById('player-name').textContent = player.name;
     document.getElementById('player-class').textContent = player.class;
     document.getElementById('player-lvl').textContent = player.lvl;
     document.getElementById('player-atk').textContent = player.attack;
     document.getElementById('player-def').textContent = player.defense;
+    document.getElementById('player-hp').textContent = Math.max(0, player.hp);
+    document.getElementById('player-hp-max').textContent = player.hpMax;
     document.getElementById('player-exp').textContent = player.exp;
     document.getElementById('player-exp-next').textContent = player.expToNextLvl;
     document.getElementById('player-gold').textContent = player.gold;
     document.getElementById('player-potions').textContent = player.potions;
+    document.getElementById('stat-points').textContent = player.statPoints; // Novo: Exibe pontos
 
-    // Atualização da barra de HP do Herói
     const heroHpPercent = (player.hp / player.hpMax) * 100;
     document.getElementById('hero-hp-bar').style.width = heroHpPercent + '%';
-    document.getElementById('player-hp').textContent = Math.max(0, player.hp);
-    document.getElementById('player-hp-max').textContent = player.hpMax;
     document.getElementById('hero-name-display').textContent = player.name;
     document.getElementById('hero-sprite').textContent = player.sprite;
 
-
     if (currentEnemy) {
-        // Atualização da barra de HP do Inimigo
-        const initialEnemyHp = new Enemy(currentEnemy.lvl).hp;
+        const initialEnemyHp = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).hp;
         const enemyHpPercent = (currentEnemy.hp / initialEnemyHp) * 100;
         document.getElementById('enemy-hp-bar').style.width = enemyHpPercent + '%';
         document.getElementById('enemy-name-display').textContent = currentEnemy.name;
         document.getElementById('enemy-sprite').textContent = currentEnemy.sprite;
     } else {
-        // Reseta o display do inimigo quando não há batalha
         document.getElementById('enemy-name-display').textContent = '---';
         document.getElementById('enemy-sprite').textContent = '---';
         document.getElementById('enemy-hp-bar').style.width = '100%';
@@ -123,7 +145,49 @@ function updateActions(buttonsHtml) {
     document.getElementById('action-area').innerHTML = buttonsHtml;
 }
 
-// --- FUNÇÕES DE FLUXO E BATALHA ---
+// --- FUNÇÕES DE FLUXO DO JOGO ---
+
+// Novo: Menu de distribuição de pontos
+function showStatDistribution() {
+    logMessage(`⭐ VOCÊ TEM ${player.statPoints} PONTOS PARA DISTRIBUIR!`);
+    
+    // Atualiza o display de HP para o valor atual (sem o max)
+    const currentHpDisplay = player.hpMax; 
+    
+    const buttons = `
+        <p>Pontos Restantes: <span style="color:#ffcc00">${player.statPoints}</span></p>
+        <button onclick="distributePoint('HP', 10)">+10 HP Máx (Atual: ${currentHpDisplay})</button>
+        <button onclick="distributePoint('ATK', 3)">+3 ATK (Atual: ${player.attack})</button>
+        <button onclick="distributePoint('DEF', 2)">+2 DEF (Atual: ${player.defense})</button>
+        <button onclick="showMainMenu()" ${player.statPoints > 0 ? 'disabled' : ''}>Continuar Jornada</button>
+    `;
+    updateActions(buttons);
+}
+
+function distributePoint(stat, amount) {
+    if (player.statPoints <= 0) {
+        logMessage("Você não tem mais pontos para distribuir. Clique em Continuar.");
+        return;
+    }
+    
+    player.statPoints--;
+    
+    if (stat === 'HP') {
+        player.hpMax += amount;
+        player.hp += amount; // Cura total ao aumentar HP
+        logMessage(`+${amount} HP Máximo!`);
+    } else if (stat === 'ATK') {
+        player.attack += amount;
+        logMessage(`+${amount} Ataque!`);
+    } else if (stat === 'DEF') {
+        player.defense += amount;
+        logMessage(`+${amount} Defesa!`);
+    }
+
+    updateStats();
+    showStatDistribution(); // Recarrega o menu
+}
+
 
 function showClassSelection() {
     const name = document.getElementById('name-input').value.trim();
@@ -134,54 +198,102 @@ function showClassSelection() {
 
     document.getElementById('action-area').innerHTML = `
         <p>Escolha a sua vocação, ${name}:</p>
-        <button onclick="startGame('${name}', 'Guerreiro')">🛡️ Guerreiro (Alta Defesa)</button>
-        <button onclick="startGame('${name}', 'Mago')">🔮 Mago (Alto Ataque)</button>
-        <button onclick="startGame('${name}', 'Arqueiro')">🏹 Arqueiro (Crítico)</button>
+        <button onclick="startGame('${name}', 'Guerreiro')">🛡️ Guerreiro (Fúria do Machado)</button>
+        <button onclick="startGame('${name}', 'Mago')">🔮 Mago (Explosão Arcana)</button>
+        <button onclick="startGame('${name}', 'Arqueiro')">🏹 Arqueiro (Tiro Preciso)</button>
     `;
 }
 
 function startGame(name, className) {
     player = new Player(name, className);
-    document.getElementById('battle-display').style.display = 'flex'; // Mostra a arena
-    logMessage(`O ${className} ${name} inicia a aventura!`);
+    document.getElementById('battle-display').style.display = 'flex';
+    logMessage(`O ${className} ${name} inicia a aventura na ${ZONAS[zonaAtual].nome}!`);
     updateStats();
     showMainMenu();
 }
 
 function showMainMenu() {
+    if (player.statPoints > 0) {
+        showStatDistribution(); // Obriga a distribuir pontos
+        return;
+    }
+    
     currentEnemy = null;
     updateStats();
+    
+    // Animação: Esconde o monstro gradualmente
+    const enemyModel = document.getElementById('enemy-model');
+    enemyModel.classList.remove('monster-appeared');
+    enemyModel.classList.add('hidden-enemy');
+
+
+    const zona = ZONAS[zonaAtual];
+
+    let advanceButton = "";
+    if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
+        advanceButton = `<button onclick="advanceZone()" class="btn-advance">➡️ AVANÇAR PARA ${ZONAS[zonaAtual + 1].nome}</button>`;
+    }
+
     const buttons = `
-        <button onclick="hunt()">1. Caçar em Campo Aberto</button>
-        <button onclick="openShop()">2. Visitar o Mercador</button>
+        <p>Ação na ${zona.nome} ${zona.sprite}:</p>
+        <button onclick="hunt(false)">1. Explorar (Monstro Comum)</button>
+        <button onclick="hunt(true)">2. Desafiar ${zona.boss.nome} (Boss)</button>
+        ${advanceButton}
+        <button onclick="openShop()">3. Visitar o Mercador</button>
     `;
     updateActions(buttons);
 }
 
-function hunt() {
-    const enemyLvl = Math.max(1, player.lvl + Math.floor(Math.random() * 3) - 1);
-    currentEnemy = new Enemy(enemyLvl);
-    logMessage(`!!! ${currentEnemy.sprite} Um ${currentEnemy.name} (LVL ${currentEnemy.lvl}) apareceu! !!!`);
+function advanceZone() {
+    if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
+        zonaAtual++;
+        logMessage(`🎉 Você entrou na ${ZONAS[zonaAtual].nome}! Novos perigos te aguardam.`);
+        showMainMenu();
+    } else {
+        logMessage("Você não está forte o suficiente para avançar ou já está no último mapa.");
+        showMainMenu();
+    }
+}
+
+
+function hunt(isBoss) {
+    const zona = ZONAS[zonaAtual];
+    let lvlMonstro = zona.lvlMin + Math.floor(Math.random() * 3);
+    
+    if (isBoss) {
+        lvlMonstro = Math.max(player.lvl, zona.lvlMin) + 2; 
+        currentEnemy = new Enemy(lvlMonstro, true);
+        logMessage(`⚠️ Você desafiou o CHEFE: ${currentEnemy.sprite} ${currentEnemy.name}! Prepare-se!`);
+    } else {
+        currentEnemy = new Enemy(lvlMonstro, false);
+        logMessage(`!!! ${currentEnemy.sprite} Um ${currentEnemy.name} (LVL ${currentEnemy.lvl}) apareceu! !!!`);
+    }
+    
+    // Animação: Mostra o monstro
+    const enemyModel = document.getElementById('enemy-model');
+    enemyModel.classList.remove('hidden-enemy');
+    enemyModel.classList.add('monster-appeared');
+    
+    updateStats();
     showBattleMenu();
 }
 
 function showBattleMenu() {
     updateStats();
-    if (isAnimating) return; // Impede cliques durante animação
+    if (isAnimating) return;
     
     const buttons = `
         <button onclick="playerAttack('normal')">1. Ataque Básico</button>
-        <button onclick="playerAttack('special')">2. Habilidade de Classe</button>
+        <button onclick="playerAttack('special')">2. Habilidade Única (CLASSE)</button>
         <button onclick="usePotion()">3. Usar Poção (${player.potions})</button>
     `;
     updateActions(buttons);
 }
 
+// HABILIDADES ÚNICAS DE CADA CLASSE
 function playerAttack(type) {
     if (!currentEnemy || isAnimating) return;
     isAnimating = true;
-
-    // ANIMAÇÃO DE ATAQUE
     triggerAnimation('hero-sprite', 'attacking');
 
     let damage = 0;
@@ -191,23 +303,37 @@ function playerAttack(type) {
         logMessage(`${player.class} usa Ataque Básico.`);
     } else if (type === 'special') {
         
-        let bonus = 0;
         let msg = "";
         
-        if (player.class === 'Guerreiro') { bonus = 15; msg = "Guerreiro usa Ataque Pesado!"; }
-        if (player.class === 'Mago') { bonus = 25; msg = "Mago lança Bola de Fogo!"; }
-        if (player.class === 'Arqueiro') { 
-            // Chance de Crítico
-            if (Math.random() < 0.25) { 
-                bonus = player.attack * 0.5; // Dano extra por crítico
-                msg = "🏹 CRÍTICO! Arqueiro acerta um ponto vital!";
+        if (player.class === 'Guerreiro') { 
+            // Habilidade: Fúria do Machado (Dano alto, 10% de chance de Dano Duplo)
+            damage = player.attack + 20 + Math.floor(Math.random() * 10);
+            if (Math.random() < 0.1) {
+                 damage *= 2;
+                 msg = "💥 GUERREIRO ATIVOU FÚRIA! Dano Dobrado!";
             } else {
-                bonus = 10;
-                msg = "Arqueiro dispara Flecha Rápida.";
+                 msg = "Guerreiro usa Fúria do Machado!";
             }
         }
         
-        damage = player.attack + bonus + Math.floor(Math.random() * 5);
+        if (player.class === 'Mago') { 
+            // Habilidade: Explosão Arcana (Dano Mágico, ignora metade da DEF)
+            damage = player.attack + 30 + Math.floor(Math.random() * 15);
+            currentEnemy.defense = Math.max(0, currentEnemy.defense / 2); // Reduz Defesa
+            msg = "⚡ MAGO LANÇA EXPLOSÃO ARCANA! (Reduz Defesa do inimigo)";
+        }
+        
+        if (player.class === 'Arqueiro') { 
+            // Habilidade: Tiro Preciso (Chance de Crítico mais alta)
+            damage = player.attack + 15 + Math.floor(Math.random() * 10);
+            if (Math.random() < 0.4) { // 40% de chance de crítico
+                damage = damage * 1.5;
+                msg = "🎯 ARQUEIRO ACERTA TIRO PRECISO! (Crítico)";
+            } else {
+                msg = "Arqueiro usa Tiro Preciso.";
+            }
+        }
+        
         logMessage(msg);
     }
     
@@ -216,7 +342,11 @@ function playerAttack(type) {
     currentEnemy.hp -= finalDamage;
     logMessage(`Causou ${finalDamage} de dano ao ${currentEnemy.name}!`);
     
-    // ANIMAÇÃO DE DANO NO INIMIGO
+    // Se o Mago reduziu a DEF, restaura ela depois do ataque
+    if (player.class === 'Mago' && type === 'special') {
+         currentEnemy.defense = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).defense;
+    }
+
     triggerAnimation('enemy-sprite', 'receiving-damage'); 
 
     updateStats(); 
@@ -233,25 +363,23 @@ function usePotion() {
     isAnimating = true;
 
     if (player.potions > 0) {
-        const heal = Math.floor(player.hpMax * 0.3) + 20; // Cura baseada no HP máximo
+        const heal = Math.floor(player.hpMax * 0.3) + 20;
         player.hp = Math.min(player.hpMax, player.hp + heal);
         player.potions--;
         logMessage(`[CURA] Você usou uma Poção e recuperou ${heal} HP.`);
         updateStats();
-        setTimeout(enemyTurn, 500); // Passa o turno para o inimigo após curar
+        setTimeout(enemyTurn, 500);
     } else {
         logMessage("[ATENÇÃO] Você não tem poções restantes!");
-        isAnimating = false; // Permite o próximo clique
-        showBattleMenu(); 
+        isAnimating = false;
+        showBattleMenu();
     }
 }
 
 function enemyTurn() {
     if (player.hp <= 0) return gameOver();
 
-    // ANIMAÇÃO DE ATAQUE DO INIMIGO
     const enemySprite = document.getElementById('enemy-sprite');
-    // Usa a mesma animação de ataque, mas inverte a direção (reverse)
     enemySprite.style.animation = 'attack-move 0.3s ease-in-out reverse'; 
     setTimeout(() => enemySprite.style.animation = '', 300);
 
@@ -260,7 +388,6 @@ function enemyTurn() {
     player.hp -= finalDamage;
     logMessage(`${currentEnemy.name} atacou, causando ${finalDamage} de dano!`);
 
-    // ANIMAÇÃO DE DANO NO HERÓI
     triggerAnimation('hero-sprite', 'receiving-damage');
 
     updateStats();
@@ -272,17 +399,19 @@ function enemyTurn() {
     }
 }
 
-// SISTEMA DE LOOT E VITÓRIA
 function victory() {
-    logMessage(`*** VITÓRIA! ${currentEnemy.name} derrotado! ***`);
+    const isBoss = currentEnemy.isBoss;
+    const zonaVencida = ZONAS[zonaAtual].nome;
+
+    logMessage(isBoss ? 
+        `👑 O GRANDE CHEFE ${currentEnemy.name} foi derrotado!`: 
+        `*** VITÓRIA! ${currentEnemy.name} derrotado! ***`);
     
-    // Loot System
     player.exp += currentEnemy.expReward;
     player.gold += currentEnemy.goldReward;
     logMessage(`Ganhou ${currentEnemy.expReward} EXP e ${currentEnemy.goldReward} Ouro.`);
     
-    // Chance para Poção Loot (40% de chance)
-    if (Math.random() < 0.4) {
+    if (Math.random() < (isBoss ? 0.7 : 0.4)) {
         player.potions++;
         logMessage(`Você encontrou 1 Poção em meio aos espólios!`);
     }
@@ -291,22 +420,28 @@ function victory() {
         player.levelUp();
     }
     
-    currentEnemy = null; // Limpa o inimigo
+    if (isBoss && ZONAS[zonaAtual + 1]) {
+        logMessage(`🗺️ Você derrotou o Guardião da ${zonaVencida}! Se estiver no nível certo, poderá avançar.`);
+    } else if (isBoss && !ZONAS[zonaAtual + 1]) {
+        logMessage("✨ PARABÉNS! Você completou a jornada épica!");
+    }
+
+    currentEnemy = null;
     updateStats(); 
     isAnimating = false;
-    setTimeout(showMainMenu, 3000); // Volta ao menu principal após 3s
+    setTimeout(showMainMenu, 3000);
 }
 
 function gameOver() {
     logMessage(`*** FIM DE JOGO! Você foi derrotado no Nível ${player.lvl}. ***`);
-    document.getElementById('battle-display').style.display = 'none'; // Esconde a arena
+    document.getElementById('battle-display').style.display = 'none';
     updateActions(`<button onclick="location.reload()">Recomeçar Jornada</button>`);
     isAnimating = false;
 }
 
 // --- SISTEMA DE LOJA (MERCADOR) ---
 function openShop() {
-    const potionPrice = 30;
+    const potionPrice = 30 + (zonaAtual * 5);
     logMessage(`[MERCADOR] Poção Pequena de Cura custa ${potionPrice} Ouro. Você tem ${player.gold} Ouro.`);
     
     const buttons = `
@@ -325,6 +460,5 @@ function buyItem(item, price) {
         logMessage(`[ATENÇÃO] Ouro insuficiente! Você precisa de ${price} Ouro.`);
     }
     updateStats();
-    // Mantém o menu da loja ativo para comprar mais
     openShop();
 }

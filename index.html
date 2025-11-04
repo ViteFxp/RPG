@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RPG Medieval Web - A Lenda do Herói</title>
+    <title>RPG Medieval Épico - Versão Final</title>
     <link rel="stylesheet" href="style.css"> 
 </head>
 <body>
 
     <header>
-        <h1>⚔️ A Batalha Medieval 📜</h1>
+        <h1>⚔️ A Jornada dos Heróis 📜</h1>
     </header>
 
     <div class="container">
@@ -23,7 +23,7 @@
                     <span id="hero-name-display"></span>
                 </div>
                 
-                <div id="enemy-model" class="character-model">
+                <div id="enemy-model" class="character-model hidden-enemy">
                     <div class="hp-bar-container"><div id="enemy-hp-bar" class="hp-bar"></div></div>
                     <div id="enemy-sprite" class="sprite-icon"></div>
                     <span id="enemy-name-display"></span>
@@ -33,15 +33,15 @@
             
             <div id="player-stats" class="stats-box">
                 <h2>Status do Herói</h2>
-                <p>Nome: <span id="player-name">---</span> | Classe: <span id="player-class">---</span> | Nível: <span id="player-lvl">---</span></p>
+                <p>Zona: <span id="current-zone">---</span> | Nível: <span id="player-lvl">---</span> (Pontos: <span id="stat-points">0</span>)</p>
+                <p>Nome: <span id="player-name">---</span> | Classe: <span id="player-class">---</span> </p>
                 <p>HP: <span id="player-hp">---</span>/<span id="player-hp-max">---</span></p>
                 <p>ATK: <span id="player-atk">---</span> | DEF: <span id="player-def">---</span></p>
-                <p>EXP: <span id="player-exp">---</span>/<span id="player-exp-next">---</span> | Ouro: <span id="player-gold">---</span></p>
-                <p>Poções: <span id="player-potions">---</span></p>
+                <p>EXP: <span id="player-exp">---</span>/<span id="player-exp-next">---</span> | Ouro: <span id="player-gold">---</span> | Poções: <span id="player-potions">---</span></p>
             </div>
             
             <div id="log-box">
-                <p>Bem-vindo ao Reino! Digite seu nome e escolha sua classe.</p>
+                <p>Bem-vindo ao Reino! Digite seu nome e prepare-se para a aventura.</p>
             </div>
 
             <div id="action-area">
@@ -52,7 +52,7 @@
     </div>
 
     <footer>
-        <p>Projeto RPG Web - Versão Completa para GitHub Pages.</p>
+        <p>Projeto RPG Web - Versão Final e Épica.</p>
     </footer>
 
     <script src="game.js"></script>
