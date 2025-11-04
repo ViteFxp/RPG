@@ -1,12 +1,3 @@
-Ótima ideia\! Adicionar um **cooldown** (tempo de recarga) à habilidade única de cada classe trará mais estratégia e balanceamento ao combate.
-
-Para implementar isso, faremos modificações no arquivo `game.js`.
-
-### 🧠 Arquivo: `game.js` (Lógica de Cooldown)
-
-Vamos adicionar uma nova variável no objeto `Player` para rastrear o estado do cooldown e modificar as funções de ataque e menu de batalha.
-
-```javascript
 // --- DADOS E VARIÁVEIS DO JOGO ---
 // (ZONAS e BASE_STATS permanecem inalterados)
 
@@ -362,11 +353,3 @@ function victory() {
 }
 
 // ... (Funções de game over, loja, etc., inalteradas) ...
-```
-
-### 📋 Instruções de Implementação
-
-1.  **Mantenha** os arquivos `index.html` e `style.css` da última versão.
-2.  **Substitua integralmente** o conteúdo do seu arquivo **`game.js`** pelo código acima.
-
-Agora, a habilidade única terá um cooldown de **3 turnos** de batalha, forçando o jogador a usar ataques básicos ou poções enquanto espera a recarga\!
