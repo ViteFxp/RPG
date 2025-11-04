@@ -1,5 +1,4 @@
 // --- DADOS E VARIÁVEIS DO JOGO ---
-// (ZONAS e BASE_STATS permanecem inalterados)
 
 const ZONAS = [
     { nome: "FLORESTA PROIBIDA", lvlMin: 1, inimigos: ["GOBLIN", "SLIME", "LOBO SELVAGEM"], boss: { nome: "REI GOBLIN", sprite: "👑" }, sprite: "🌳" },
@@ -15,15 +14,12 @@ const BASE_STATS = {
     'ARQUEIRO': { hp: 110, atk: 22, def: 7, sprite: '🏹' }
 };
 
-// Cooldown em turnos
-const SKILL_COOLDOWN = 3; 
-
 let player;
 let currentEnemy;
 let isAnimating = false;
 let zonaAtual = 0;
 
-// --- CLASSE JOGADOR ---
+// --- CLASSE JOGADOR e INIMIGO (Mantidas) ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -40,8 +36,6 @@ class Player {
         this.potions = 2;
         this.sprite = stats.sprite;
         this.statPoints = 0;
-        // NOVO: Cooldown da habilidade única (turnos restantes)
-        this.skillCooldown = 0; 
     }
 
     levelUp() {
@@ -53,13 +47,12 @@ class Player {
         this.hp = this.hpMax;
         logMessage(`[LVL UP] VOCÊ ALCANÇOU O NÍVEL ${this.lvl}! PONTOS GANHOS.`);
         
+        // Se subir de nível no menu principal, vai para a tela de stats
         if (!currentEnemy) {
             changeScreen('stats'); 
         }
     }
 }
-
-// O restante da Classe Enemy permanece inalterado
 
 class Enemy {
     constructor(lvl, isBoss = false) {
@@ -91,7 +84,7 @@ class Enemy {
     }
 }
 
-// --- GERENCIAMENTO DE TELAS (Inalterado) ---
+// --- GERENCIAMENTO DE TELAS ---
 
 function changeScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
@@ -105,14 +98,11 @@ function changeScreen(screenId) {
     }
 }
 
-// --- FUNÇÕES DE INTERFACE (Inalterado) ---
+// --- FUNÇÕES DE INTERFACE ---
 
 function updateStats() {
     if (!player) return;
 
-    // ... (Parte de atualização do Status Box e HUD do Herói permanece inalterada) ...
-    // Eu omiti a maior parte desta função para focar nas mudanças de lógica.
-    
     // --- Atualização do Status Box (Geral) ---
     const statsHtml = `
         <p>ZONA: ${ZONAS[zonaAtual].sprite} ${ZONAS[zonaAtual].nome} | NÍVEL: ${player.lvl} (PONTOS: ${player.statPoints})</p>
@@ -120,11 +110,13 @@ function updateStats() {
         <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense} | EXP: ${player.exp}/${player.expToNextLvl}</p>
     `;
     
+    // Atualiza o painel geral
     document.getElementById('player-stats').innerHTML = `<h2>STATUS GERAL</h2>${statsHtml}`;
+    // Atualiza o painel de resumo na tela de distribuição/loja
     document.getElementById('player-stats-summary').innerHTML = statsHtml;
     document.getElementById('player-gold-shop').textContent = player.gold;
     
-    // --- Atualização do HUD de Batalha (Simplificado) ---
+    // --- Atualização do HUD de Batalha ---
     const heroHpPercent = (player.hp / player.hpMax) * 100;
     document.getElementById('hero-hp-bar').style.width = heroHpPercent + '%';
     document.getElementById('hero-name-display').textContent = player.name;
@@ -176,25 +168,137 @@ function triggerAnimation(targetElementId, animationClass) {
     }, 400); 
 }
 
-// ... (Funções de setup, level up, etc., inalteradas) ...
+
+// --- FUNÇÕES DE FLUXO DO JOGO ---
+
+function showClassSelection() {
+    const name = document.getElementById('name-input').value.trim();
+    if (!name) {
+        logMessage("[ERRO] DIGITE SEU NOME PARA CONTINUAR.");
+        return;
+    }
+    
+    const initialArea = document.getElementById('initial-area');
+    initialArea.innerHTML = `
+        <p class="ascii-font">ESCOLHA SUA CLASSE, ${name}:</p>
+        <button onclick="startGame('${name}', 'GUERREIRO')">🛡️ GUERREIRO (FÚRIA DO MACHADO)</button>
+        <button onclick="startGame('${name}', 'MAGO')">🔮 MAGO (EXPLOSÃO ARCANA)</button>
+        <button onclick="startGame('${name}', 'ARQUEIRO')">🏹 ARQUEIRO (TIRO PRECISO)</button>
+    `;
+}
+
+
+function startGame(name, className) {
+    player = new Player(name, className);
+    document.getElementById('battle-display').style.display = 'flex';
+    logMessage(`[INÍCIO] O ${className} ${name} INICIA A AVENTURA!`);
+    updateStats();
+    changeScreen('main'); // Vai para a tela principal
+    showMainMenu();
+}
+
+function showStatDistribution() {
+    changeScreen('stats');
+    logMessage(`[LVL UP] VOCÊ TEM ${player.statPoints} PONTOS PARA DISTRIBUIR!`);
+    
+    const currentHpDisplay = player.hpMax; 
+    
+    const buttons = `
+        <p>PONTOS RESTANTES: <span style="color:#ff0000">${player.statPoints}</span></p>
+        <button class="btn-stat" onclick="distributePoint('HP', 10)">+10 HP MÁX (ATUAL: ${currentHpDisplay})</button>
+        <button class="btn-stat" onclick="distributePoint('ATK', 3)">+3 ATK (ATUAL: ${player.attack})</button>
+        <button class="btn-stat" onclick="distributePoint('DEF', 2)">+2 DEF (ATUAL: ${player.defense})</button>
+        <br>
+        <button onclick="showMainMenu()" ${player.statPoints > 0 ? 'disabled' : ''}>CONTINUAR JORNADA</button>
+    `;
+    document.getElementById('stats-distribution-area').innerHTML = buttons;
+    updateStats();
+}
+
+function distributePoint(stat, amount) {
+    if (player.statPoints <= 0) {
+        logMessage("[ERRO] SEM PONTOS.");
+        return;
+    }
+    
+    player.statPoints--;
+    
+    if (stat === 'HP') {
+        player.hpMax += amount;
+        player.hp += amount;
+    } else if (stat === 'ATK') {
+        player.attack += amount;
+    } else if (stat === 'DEF') {
+        player.defense += amount;
+    }
+
+    logMessage(`[STATUS] +${amount} EM ${stat}!`);
+    updateStats();
+    showStatDistribution();
+}
+
+function showMainMenu() {
+    changeScreen('main'); // Vai para a tela principal
+    if (player.statPoints > 0) {
+        showStatDistribution();
+        return;
+    }
+    
+    currentEnemy = null;
+    updateStats();
+    
+    const zona = ZONAS[zonaAtual];
+
+    let advanceButton = "";
+    if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
+        advanceButton = `<button onclick="advanceZone()" class="btn-advance">➡️ AVANÇAR PARA ${ZONAS[zonaAtual + 1].nome}</button>`;
+    }
+
+    const buttons = `
+        <p>AÇÃO NA ${zona.nome} ${zona.sprite}:</p>
+        <button onclick="hunt(false)">1. EXPLORAR (MONSTRO COMUM)</button>
+        <button onclick="hunt(true)">2. DESAFIAR ${zona.boss.nome} (BOSS)</button>
+        ${advanceButton}
+        <button onclick="openShop()">3. VISITAR O MERCADOR</button>
+    `;
+    updateActions(buttons);
+}
+
+function advanceZone() {
+    if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
+        zonaAtual++;
+        logMessage(`[ZONA] VOCÊ ENTROU NA ${ZONAS[zonaAtual].nome}!`);
+        showMainMenu();
+    } else {
+        logMessage("[ZONA] NÍVEL INSUFICIENTE PARA AVANÇAR.");
+        showMainMenu();
+    }
+}
+
+function hunt(isBoss) {
+    const zona = ZONAS[zonaAtual];
+    let lvlMonstro = zona.lvlMin + Math.floor(Math.random() * 3);
+    
+    if (isBoss) {
+        lvlMonstro = Math.max(player.lvl, zona.lvlMin) + 2; 
+        currentEnemy = new Enemy(lvlMonstro, true);
+        logMessage(`[BATALHA] CHEFE: ${currentEnemy.sprite} ${currentEnemy.name} APARECEU!`);
+    } else {
+        currentEnemy = new Enemy(lvlMonstro, false);
+        logMessage(`[BATALHA] ${currentEnemy.sprite} ${currentEnemy.name} (LVL ${currentEnemy.lvl}) APARECEU!`);
+    }
+    
+    updateStats();
+    showBattleMenu();
+}
 
 function showBattleMenu() {
     updateStats();
     if (isAnimating) return;
     
-    let skillButton;
-    
-    if (player.skillCooldown > 0) {
-        // Se a habilidade estiver em cooldown
-        skillButton = `<button disabled>2. HABILIDADE ÚNICA (CD: ${player.skillCooldown})</button>`;
-    } else {
-        // Se a habilidade estiver pronta
-        skillButton = `<button onclick="playerAttack('special')">2. HABILIDADE ÚNICA</button>`;
-    }
-    
     const buttons = `
         <button onclick="playerAttack('normal')">1. ATK BÁSICO</button>
-        ${skillButton}
+        <button onclick="playerAttack('special')">2. HABILIDADE ÚNICA</button>
         <button onclick="usePotion()">3. USAR POÇÃO (${player.potions})</button>
         <button onclick="attemptToFlee()">4. TENTAR FUGIR</button>
     `;
@@ -203,7 +307,29 @@ function showBattleMenu() {
 
 // --- FUNÇÕES DE COMBATE ---
 
-// ... (attemptToFlee permanece inalterado) ...
+function attemptToFlee() {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    if (currentEnemy.isBoss) {
+        logMessage("[FUGA] É IMPOSSÍVEL FUGIR DE UM CHEFE!");
+        setTimeout(enemyTurn, 800);
+        return;
+    }
+    
+    const fleeChance = 0.6 + ((player.lvl - currentEnemy.lvl) * 0.05);
+
+    if (Math.random() < fleeChance) {
+        logMessage("[FUGA] VOCÊ FUGIU COM SUCESSO!");
+        currentEnemy = null;
+        isAnimating = false;
+        setTimeout(showMainMenu, 500);
+    } else {
+        logMessage("[FUGA] FALHOU! O INIMIGO BLOQUEOU.");
+        setTimeout(enemyTurn, 800);
+    }
+}
+
 
 function playerAttack(type) {
     if (!currentEnemy || isAnimating) return;
@@ -215,23 +341,8 @@ function playerAttack(type) {
     if (type === 'normal') {
         damage = player.attack + Math.floor(Math.random() * 8);
         logMessage(`[AÇÃO] ${player.class} USA ATK BÁSICO.`);
-        
-        // NOVO: Diminui o cooldown no turno de ataque básico
-        if (player.skillCooldown > 0) {
-            player.skillCooldown--;
-            logMessage(`[CD] COOLDOWN DA HABILIDADE ÚNICA: ${player.skillCooldown}.`);
-        }
-        
     } else if (type === 'special') {
         
-        if (player.skillCooldown > 0) {
-            logMessage("[ERRO] HABILIDADE EM COOLDOWN. ESCOLHA OUTRA AÇÃO.");
-            isAnimating = false;
-            showBattleMenu();
-            return;
-        }
-
-        // --- ATIVAR HABILIDADE ÚNICA ---
         let msg = "";
         
         if (player.class === 'GUERREIRO') { 
@@ -261,9 +372,6 @@ function playerAttack(type) {
         }
         
         logMessage(msg);
-        
-        // NOVO: Ativa o cooldown após o uso da habilidade
-        player.skillCooldown = SKILL_COOLDOWN; 
     }
     
     const finalDamage = Math.max(0, Math.floor(damage - currentEnemy.defense));
@@ -295,13 +403,6 @@ function usePotion() {
         player.potions--;
         logMessage(`[CURA] VOCÊ USOU POÇÃO E RECUPEROU ${heal} HP.`);
         updateStats();
-        
-        // NOVO: Diminui o cooldown mesmo usando poção
-        if (player.skillCooldown > 0) {
-            player.skillCooldown--;
-            logMessage(`[CD] COOLDOWN DA HABILIDADE ÚNICA: ${player.skillCooldown}.`);
-        }
-        
         setTimeout(enemyTurn, 500);
     } else {
         logMessage("[ERRO] SEM POÇÕES RESTANTES!");
@@ -310,15 +411,8 @@ function usePotion() {
     }
 }
 
-
 function enemyTurn() {
     if (player.hp <= 0) return gameOver();
-
-    // NOVO: Diminui o cooldown após o turno do inimigo
-    if (player.skillCooldown > 0) {
-        player.skillCooldown--;
-        logMessage(`[CD] COOLDOWN DA HABILIDADE ÚNICA: ${player.skillCooldown}.`);
-    }
 
     const enemySprite = document.getElementById('enemy-sprite');
     enemySprite.style.animation = 'attack-move 0.3s ease-in-out reverse'; 
@@ -341,15 +435,67 @@ function enemyTurn() {
 }
 
 function victory() {
-    // ... (Lógica de vitória permanece inalterada) ...
+    const isBoss = currentEnemy.isBoss;
+    const zonaVencida = ZONAS[zonaAtual].nome;
 
-    // NOVO: Reseta o cooldown ao fim da batalha
-    player.skillCooldown = 0; 
+    logMessage(isBoss ? 
+        `[VITÓRIA] CHEFE ${currentEnemy.name} DERROTADO!` : 
+        `[VITÓRIA] ${currentEnemy.name} DERROTADO!`);
     
+    player.exp += currentEnemy.expReward;
+    player.gold += currentEnemy.goldReward;
+    logMessage(`[LOOT] +${currentEnemy.expReward} EXP, +${currentEnemy.goldReward} OURO.`);
+    
+    if (Math.random() < (isBoss ? 0.7 : 0.4)) {
+        player.potions++;
+        logMessage(`[LOOT] ENCONTROU 1 POÇÃO!`);
+    }
+
+    if (player.exp >= player.expToNextLvl) {
+        player.levelUp();
+    }
+    
+    if (isBoss && ZONAS[zonaAtual + 1]) {
+        logMessage(`[PROGRESSO] GUARDIÃO DA ZONA VENCIDO!`);
+    } else if (isBoss && !ZONAS[zonaAtual + 1]) {
+        logMessage("[FIM DE JOGO] PARABÉNS! JORNADA COMPLETA!");
+    }
+
     currentEnemy = null;
     updateStats(); 
     isAnimating = false;
     setTimeout(showMainMenu, 3000);
 }
 
-// ... (Funções de game over, loja, etc., inalteradas) ...
+function gameOver() {
+    logMessage(`[FIM DE JOGO] VOCÊ FOI DERROTADO NO NÍVEL ${player.lvl}.`);
+    document.getElementById('battle-display').style.display = 'none';
+    updateActions(`<button onclick="location.reload()">RECOMEÇAR JORNADA</button>`);
+    isAnimating = false;
+}
+
+// --- SISTEMA DE LOJA (MERCADOR) ---
+function openShop() {
+    changeScreen('shop'); // Vai para a tela da loja
+    const potionPrice = 30 + (zonaAtual * 5);
+    logMessage(`[MERCADOR] POÇÃO PEQUENA CUSTA ${potionPrice} OURO.`);
+    
+    const buttons = `
+        <p>SEU OURO: <span id="player-gold-shop">${player.gold}</span></p>
+        <button onclick="buyItem('potion', ${potionPrice})">COMPRAR POÇÃO (${potionPrice} OURO)</button>
+    `;
+    document.getElementById('shop-area').innerHTML = buttons;
+    updateStats();
+}
+
+function buyItem(item, price) {
+    if (player.gold >= price) {
+        player.gold -= price;
+        player.potions++;
+        logMessage(`[COMPRA] POÇÃO ADQUIRIDA!`);
+    } else {
+        logMessage(`[ERRO] OURO INSUFICIENTE!`);
+    }
+    updateStats();
+    openShop(); // Recarrega o menu da loja
+}
