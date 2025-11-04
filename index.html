@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RPG Medieval Épico - Versão Final</title>
+    <title>RPG Medieval Épico - HUD de Batalha</title>
     <link rel="stylesheet" href="style.css"> 
 </head>
 <body>
@@ -17,16 +17,24 @@
             
             <div id="battle-display" style="display:none;">
                 
-                <div id="hero-model" class="character-model">
+                <div id="hud-enemy" class="battle-hud-panel hidden-enemy-hud">
+                    <p class="hud-name" id="enemy-name-display">---</p>
+                    <div class="hp-bar-container"><div id="enemy-hp-bar" class="hp-bar"></div></div>
+                    <p class="enemy-stats-detail">HP: <span id="enemy-hp-detail">---</span> | ATK: <span id="enemy-atk-detail">---</span> | DEF: <span id="enemy-def-detail">---</span></p>
+                </div>
+
+                <div id="enemy-model" class="character-model enemy-model hidden-enemy">
+                    <div id="enemy-sprite" class="sprite-icon"></div>
+                </div>
+
+                <div id="hud-hero" class="battle-hud-panel">
+                    <p class="hud-name" id="hero-name-display">---</p>
                     <div class="hp-bar-container"><div id="hero-hp-bar" class="hp-bar"></div></div>
-                    <div id="hero-sprite" class="sprite-icon"></div>
-                    <span id="hero-name-display"></span>
+                    <p class="hero-stats-detail">Nível: <span id="player-lvl-hud">---</span> | HP: <span id="player-hp-hud">---</span>/<span id="player-hp-max-hud">---</span></p>
                 </div>
                 
-                <div id="enemy-model" class="character-model hidden-enemy">
-                    <div class="hp-bar-container"><div id="enemy-hp-bar" class="hp-bar"></div></div>
-                    <div id="enemy-sprite" class="sprite-icon"></div>
-                    <span id="enemy-name-display"></span>
+                <div id="hero-model" class="character-model">
+                    <div id="hero-sprite" class="sprite-icon"></div>
                 </div>
                 
             </div>

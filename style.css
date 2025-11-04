@@ -39,7 +39,7 @@ header {
     margin-bottom: 20px;
     border: 1px solid #555;
     text-align: left;
-    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5); /* Sombra interna para profundidade */
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
 #log-box {
@@ -54,7 +54,7 @@ header {
     font-size: 0.95em;
 }
 
-/* --- Botões e Ações (Menu Mais Bonito) --- */
+/* --- Botões e Ações --- */
 
 #action-area {
     padding: 10px;
@@ -81,7 +81,6 @@ button:hover {
     box-shadow: 0 3px 5px rgba(0, 0, 0, 0.5);
 }
 
-/* Botões especiais (Level Up) */
 .btn-stat {
     background-color: #004d00;
     padding: 5px 10px;
@@ -91,9 +90,10 @@ button:hover {
     background-color: #006600;
 }
 
-/* --- BATALHA VISUAL --- */
+/* --- ARENA DE BATALHA --- */
 
 #battle-display {
+    position: relative; /* Pai para posicionamento absoluto dos HUDs */
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
@@ -105,12 +105,14 @@ button:hover {
     padding: 0 20px;
 }
 
+/* --- SPRITES --- */
 .character-model {
     position: relative;
     width: 120px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    z-index: 10; /* Garante que os sprites fiquem acima dos HUDs */
 }
 
 .sprite-icon {
@@ -119,7 +121,71 @@ button:hover {
     line-height: 1;
 }
 
-/* --- ANIMAÇÃO DE ENTRADA DO MONSTRO --- */
+/* --- ESTILO HUD (Estilo Pokémon/RPG Clássico) --- */
+
+.battle-hud-panel {
+    position: absolute;
+    width: 250px;
+    padding: 10px;
+    background-color: #383838;
+    border: 3px solid #8b4513; /* Borda de madeira */
+    border-radius: 10px;
+    text-align: left;
+    font-size: 0.9em;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.7);
+}
+
+/* HUD do Inimigo: Canto Superior Direito */
+#hud-enemy {
+    top: 10px;
+    right: 10px;
+    opacity: 1;
+    transition: opacity 0.5s;
+}
+
+.hidden-enemy-hud {
+    opacity: 0;
+}
+
+.enemy-stats-detail {
+    margin: 5px 0 0 0;
+    color: #a0a0a0;
+}
+
+/* HUD do Herói: Canto Inferior Esquerdo */
+#hud-hero {
+    bottom: 10px;
+    left: 10px;
+    color: #ffcc99; /* Cor de destaque para o herói */
+}
+
+.hud-name {
+    margin: 0 0 5px 0;
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.hero-stats-detail {
+    margin: 5px 0 0 0;
+    color: #e0d0a8;
+}
+
+/* HP BARS (Mantido) */
+.hp-bar-container {
+    width: 100%; height: 12px; background-color: #4d4d4d; border: 1px solid #000; margin-bottom: 0px; border-radius: 5px;
+}
+.hp-bar {
+    height: 100%; background-color: #008000; width: 100%; transition: width 0.5s ease-out; border-radius: 5px;
+}
+
+
+/* --- ANIMAÇÕES --- */
+
+/* Animação de Entrada do Monstro (mantida) */
+.enemy-model {
+    position: absolute;
+    right: 50px; /* Posição na direita da arena */
+}
 
 .hidden-enemy {
     opacity: 0;
@@ -135,8 +201,7 @@ button:hover {
     animation: enemy-fade-in 0.5s ease-out forwards;
 }
 
-/* --- ANIMAÇÕES DE COMBATE --- */
-
+/* Animações de Combate (mantidas) */
 @keyframes attack-move {
     0% { transform: translateX(0); }
     50% { transform: translateX(40px) rotate(5deg); } 
@@ -155,12 +220,4 @@ button:hover {
 
 .receiving-damage {
     animation: damage-shake 0.3s ease-in-out;
-}
-
-/* HP BARS (mantido) */
-.hp-bar-container {
-    width: 100%; height: 12px; background-color: #4d4d4d; border: 1px solid #000; margin-bottom: 5px; border-radius: 5px;
-}
-.hp-bar {
-    height: 100%; background-color: #008000; width: 100%; transition: width 0.5s ease-out; border-radius: 5px;
 }

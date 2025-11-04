@@ -19,7 +19,7 @@ let currentEnemy;
 let isAnimating = false;
 let zonaAtual = 0;
 
-// --- CLASSE JOGADOR com Sistema de Pontos ---
+// --- CLASSE JOGADOR (Mantida) ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -36,23 +36,20 @@ class Player {
         this.gold = 50;
         this.potions = 2;
         this.sprite = stats.sprite;
-        this.statPoints = 0; // Novo: Pontos de status para distribuir
+        this.statPoints = 0;
     }
 
-    // SISTEMA DE LVL UP E PONTOS
     levelUp() {
         this.lvl++;
         this.exp -= this.expToNextLvl;
         this.expToNextLvl = Math.floor(this.expToNextLvl * 1.5);
-        this.statPoints += 5; // Ganha 5 pontos para distribuir
+        this.statPoints += 5;
         
-        // Aumento base de HP
         this.hpMax += 10;
         this.hp = this.hpMax;
 
         logMessage(`** LVL UP! ** Você alcançou o Nível ${this.lvl} e ganhou 5 Pontos de Habilidade!`);
         
-        // Se estiver no menu principal, força a distribuição de pontos
         if (!currentEnemy) {
             showStatDistribution();
         }
@@ -86,6 +83,7 @@ class Enemy {
         this.goldReward = Math.floor(Math.random() * (isBoss ? 50 : 15) * lvl) + 10;
         this.isBoss = isBoss;
         this.sprite = sprite;
+        this.initialHp = hpBase; // Adicionado para cálculo de HUD
     }
 }
 
@@ -109,6 +107,7 @@ function triggerAnimation(targetElementId, animationClass) {
 function updateStats() {
     if (!player) return;
 
+    // --- Atualização do Status Box (Geral) ---
     document.getElementById('current-zone').textContent = ZONAS[zonaAtual].sprite + " " + ZONAS[zonaAtual].nome;
     document.getElementById('player-name').textContent = player.name;
     document.getElementById('player-class').textContent = player.class;
@@ -121,23 +120,41 @@ function updateStats() {
     document.getElementById('player-exp-next').textContent = player.expToNextLvl;
     document.getElementById('player-gold').textContent = player.gold;
     document.getElementById('player-potions').textContent = player.potions;
-    document.getElementById('stat-points').textContent = player.statPoints; // Novo: Exibe pontos
+    document.getElementById('stat-points').textContent = player.statPoints;
 
+    // --- Atualização do HUD do Herói ---
     const heroHpPercent = (player.hp / player.hpMax) * 100;
     document.getElementById('hero-hp-bar').style.width = heroHpPercent + '%';
     document.getElementById('hero-name-display').textContent = player.name;
     document.getElementById('hero-sprite').textContent = player.sprite;
 
+    document.getElementById('player-lvl-hud').textContent = player.lvl;
+    document.getElementById('player-hp-hud').textContent = Math.max(0, player.hp);
+    document.getElementById('player-hp-max-hud').textContent = player.hpMax;
+
+    // --- Atualização do HUD do Inimigo ---
+    const hudEnemy = document.getElementById('hud-enemy');
+    const enemyModel = document.getElementById('enemy-model');
+    
     if (currentEnemy) {
-        const initialEnemyHp = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).hp;
-        const enemyHpPercent = (currentEnemy.hp / initialEnemyHp) * 100;
+        hudEnemy.classList.remove('hidden-enemy-hud');
+        enemyModel.classList.remove('hidden-enemy');
+        enemyModel.classList.add('monster-appeared'); // Garante a animação de aparição
+
+        const enemyHpPercent = (currentEnemy.hp / currentEnemy.initialHp) * 100;
         document.getElementById('enemy-hp-bar').style.width = enemyHpPercent + '%';
-        document.getElementById('enemy-name-display').textContent = currentEnemy.name;
+        document.getElementById('enemy-name-display').textContent = currentEnemy.name + ` (Lvl ${currentEnemy.lvl})`;
         document.getElementById('enemy-sprite').textContent = currentEnemy.sprite;
+        
+        // Exibe stats detalhados do inimigo
+        document.getElementById('enemy-hp-detail').textContent = Math.max(0, currentEnemy.hp);
+        document.getElementById('enemy-atk-detail').textContent = currentEnemy.attack;
+        document.getElementById('enemy-def-detail').textContent = currentEnemy.defense;
+
     } else {
-        document.getElementById('enemy-name-display').textContent = '---';
-        document.getElementById('enemy-sprite').textContent = '---';
-        document.getElementById('enemy-hp-bar').style.width = '100%';
+        hudEnemy.classList.add('hidden-enemy-hud');
+        enemyModel.classList.add('hidden-enemy');
+        enemyModel.classList.remove('monster-appeared'); // Remove a animação ao sair
     }
 }
 
@@ -147,11 +164,9 @@ function updateActions(buttonsHtml) {
 
 // --- FUNÇÕES DE FLUXO DO JOGO ---
 
-// Novo: Menu de distribuição de pontos
 function showStatDistribution() {
     logMessage(`⭐ VOCÊ TEM ${player.statPoints} PONTOS PARA DISTRIBUIR!`);
     
-    // Atualiza o display de HP para o valor atual (sem o max)
     const currentHpDisplay = player.hpMax; 
     
     const buttons = `
@@ -174,7 +189,7 @@ function distributePoint(stat, amount) {
     
     if (stat === 'HP') {
         player.hpMax += amount;
-        player.hp += amount; // Cura total ao aumentar HP
+        player.hp += amount;
         logMessage(`+${amount} HP Máximo!`);
     } else if (stat === 'ATK') {
         player.attack += amount;
@@ -185,9 +200,8 @@ function distributePoint(stat, amount) {
     }
 
     updateStats();
-    showStatDistribution(); // Recarrega o menu
+    showStatDistribution();
 }
-
 
 function showClassSelection() {
     const name = document.getElementById('name-input').value.trim();
@@ -214,19 +228,13 @@ function startGame(name, className) {
 
 function showMainMenu() {
     if (player.statPoints > 0) {
-        showStatDistribution(); // Obriga a distribuir pontos
+        showStatDistribution();
         return;
     }
     
     currentEnemy = null;
     updateStats();
     
-    // Animação: Esconde o monstro gradualmente
-    const enemyModel = document.getElementById('enemy-model');
-    enemyModel.classList.remove('monster-appeared');
-    enemyModel.classList.add('hidden-enemy');
-
-
     const zona = ZONAS[zonaAtual];
 
     let advanceButton = "";
@@ -269,12 +277,7 @@ function hunt(isBoss) {
         logMessage(`!!! ${currentEnemy.sprite} Um ${currentEnemy.name} (LVL ${currentEnemy.lvl}) apareceu! !!!`);
     }
     
-    // Animação: Mostra o monstro
-    const enemyModel = document.getElementById('enemy-model');
-    enemyModel.classList.remove('hidden-enemy');
-    enemyModel.classList.add('monster-appeared');
-    
-    updateStats();
+    updateStats(); // Força a atualização do HUD
     showBattleMenu();
 }
 
@@ -284,13 +287,40 @@ function showBattleMenu() {
     
     const buttons = `
         <button onclick="playerAttack('normal')">1. Ataque Básico</button>
-        <button onclick="playerAttack('special')">2. Habilidade Única (CLASSE)</button>
+        <button onclick="playerAttack('special')">2. Habilidade Única</button>
         <button onclick="usePotion()">3. Usar Poção (${player.potions})</button>
+        <button onclick="attemptToFlee()">4. Tentar Fugir</button>
     `;
     updateActions(buttons);
 }
 
-// HABILIDADES ÚNICAS DE CADA CLASSE
+// NOVA FUNÇÃO: TENTAR FUGIR
+function attemptToFlee() {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    // Chefes não podem ser evitados
+    if (currentEnemy.isBoss) {
+        logMessage("❌ É impossível fugir de um CHEFE! Você perde o turno.");
+        setTimeout(enemyTurn, 800);
+        return;
+    }
+    
+    // Chance de fuga: 60% base, mais chance se o nível do jogador for maior
+    const fleeChance = 0.6 + ((player.lvl - currentEnemy.lvl) * 0.05);
+
+    if (Math.random() < fleeChance) {
+        logMessage("💨 Você fugiu da batalha com sucesso e retornou ao mapa principal.");
+        currentEnemy = null;
+        isAnimating = false;
+        setTimeout(showMainMenu, 500);
+    } else {
+        logMessage("🏃 Sua tentativa de fuga falhou! O inimigo bloqueou o caminho.");
+        setTimeout(enemyTurn, 800); // Fuga falha, inimigo ataca
+    }
+}
+
+
 function playerAttack(type) {
     if (!currentEnemy || isAnimating) return;
     isAnimating = true;
@@ -306,7 +336,6 @@ function playerAttack(type) {
         let msg = "";
         
         if (player.class === 'Guerreiro') { 
-            // Habilidade: Fúria do Machado (Dano alto, 10% de chance de Dano Duplo)
             damage = player.attack + 20 + Math.floor(Math.random() * 10);
             if (Math.random() < 0.1) {
                  damage *= 2;
@@ -317,16 +346,14 @@ function playerAttack(type) {
         }
         
         if (player.class === 'Mago') { 
-            // Habilidade: Explosão Arcana (Dano Mágico, ignora metade da DEF)
             damage = player.attack + 30 + Math.floor(Math.random() * 15);
-            currentEnemy.defense = Math.max(0, currentEnemy.defense / 2); // Reduz Defesa
+            currentEnemy.defense = Math.max(0, currentEnemy.defense / 2); 
             msg = "⚡ MAGO LANÇA EXPLOSÃO ARCANA! (Reduz Defesa do inimigo)";
         }
         
         if (player.class === 'Arqueiro') { 
-            // Habilidade: Tiro Preciso (Chance de Crítico mais alta)
             damage = player.attack + 15 + Math.floor(Math.random() * 10);
-            if (Math.random() < 0.4) { // 40% de chance de crítico
+            if (Math.random() < 0.4) {
                 damage = damage * 1.5;
                 msg = "🎯 ARQUEIRO ACERTA TIRO PRECISO! (Crítico)";
             } else {
@@ -337,14 +364,13 @@ function playerAttack(type) {
         logMessage(msg);
     }
     
-    // Aplicação do Dano
     const finalDamage = Math.max(0, Math.floor(damage - currentEnemy.defense));
     currentEnemy.hp -= finalDamage;
     logMessage(`Causou ${finalDamage} de dano ao ${currentEnemy.name}!`);
     
-    // Se o Mago reduziu a DEF, restaura ela depois do ataque
     if (player.class === 'Mago' && type === 'special') {
-         currentEnemy.defense = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).defense;
+         // Restaura a DEF original após o ataque
+         currentEnemy.defense = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).defense; 
     }
 
     triggerAnimation('enemy-sprite', 'receiving-damage'); 
