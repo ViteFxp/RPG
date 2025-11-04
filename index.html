@@ -3,45 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RPG de Texto Web</title>
+    <title>RPG Medieval Web - A Lenda do Herói</title>
     <link rel="stylesheet" href="style.css"> 
 </head>
 <body>
 
     <header>
-        <h1>⚔️ A Lenda do Herói Web 📜</h1>
+        <h1>⚔️ A Batalha Medieval 📜</h1>
     </header>
 
     <div class="container">
         <div id="game-area">
+            
+            <div id="battle-display" style="display:none;">
+                
+                <div id="hero-model" class="character-model">
+                    <div class="hp-bar-container"><div id="hero-hp-bar" class="hp-bar"></div></div>
+                    <div id="hero-sprite" class="sprite-icon"></div>
+                    <span id="hero-name-display"></span>
+                </div>
+                
+                <div id="enemy-model" class="character-model">
+                    <div class="hp-bar-container"><div id="enemy-hp-bar" class="hp-bar"></div></div>
+                    <div id="enemy-sprite" class="sprite-icon"></div>
+                    <span id="enemy-name-display"></span>
+                </div>
+                
+            </div>
+            
             <div id="player-stats" class="stats-box">
-                <h2>Herói</h2>
-                <p>Nome: <span id="player-name"></span></p>
-                <p>Nível: <span id="player-lvl"></span></p>
-                <p>HP: <span id="player-hp"></span>/<span id="player-hp-max"></span></p>
-                <p>EXP: <span id="player-exp"></span>/<span id="player-exp-next"></span></p>
-                <p>Ouro: <span id="player-gold"></span> | Poções: <span id="player-potions"></span></p>
+                <h2>Status do Herói</h2>
+                <p>Nome: <span id="player-name">---</span> | Classe: <span id="player-class">---</span> | Nível: <span id="player-lvl">---</span></p>
+                <p>HP: <span id="player-hp">---</span>/<span id="player-hp-max">---</span></p>
+                <p>ATK: <span id="player-atk">---</span> | DEF: <span id="player-def">---</span></p>
+                <p>EXP: <span id="player-exp">---</span>/<span id="player-exp-next">---</span> | Ouro: <span id="player-gold">---</span></p>
+                <p>Poções: <span id="player-potions">---</span></p>
             </div>
-
-            <div id="enemy-stats" class="stats-box">
-                <h2>Inimigo</h2>
-                <p>Nome: <span id="enemy-name">---</span></p>
-                <p>HP: <span id="enemy-hp">---</span></p>
-            </div>
-
+            
             <div id="log-box">
-                <p>Bem-vindo! Digite seu nome para começar.</p>
+                <p>Bem-vindo ao Reino! Digite seu nome e escolha sua classe.</p>
             </div>
 
             <div id="action-area">
-                <input type="text" id="name-input" placeholder="Digite seu nome">
-                <button onclick="startGame()">Começar Aventura</button>
+                <input type="text" id="name-input" placeholder="Digite o nome do seu Herói">
+                <button onclick="showClassSelection()">Escolher Classe</button>
             </div>
         </div>
     </div>
 
     <footer>
-        <p>Projeto RPG para GitHub Pages.</p>
+        <p>Projeto RPG Web - Versão Completa para GitHub Pages.</p>
     </footer>
 
     <script src="game.js"></script>
