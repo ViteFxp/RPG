@@ -3,64 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RPG Medieval Épico - HUD de Batalha</title>
+    <title>RPG ASCII Medieval Épico</title>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css"> 
 </head>
 <body>
 
     <header>
-        <h1>⚔️ A Jornada dos Heróis 📜</h1>
+        <h1>[ A JORNADA DO HERÓI ]</h1>
     </header>
 
     <div class="container">
-        <div id="game-area">
-            
-            <div id="battle-display" style="display:none;">
-                
-                <div id="hud-enemy" class="battle-hud-panel hidden-enemy-hud">
-                    <p class="hud-name" id="enemy-name-display">---</p>
-                    <div class="hp-bar-container"><div id="enemy-hp-bar" class="hp-bar"></div></div>
-                    <p class="enemy-stats-detail">HP: <span id="enemy-hp-detail">---</span> | ATK: <span id="enemy-atk-detail">---</span> | DEF: <span id="enemy-def-detail">---</span></p>
-                </div>
-
-                <div id="enemy-model" class="character-model enemy-model hidden-enemy">
-                    <div id="enemy-sprite" class="sprite-icon"></div>
-                </div>
-
-                <div id="hud-hero" class="battle-hud-panel">
-                    <p class="hud-name" id="hero-name-display">---</p>
-                    <div class="hp-bar-container"><div id="hero-hp-bar" class="hp-bar"></div></div>
-                    <p class="hero-stats-detail">Nível: <span id="player-lvl-hud">---</span> | HP: <span id="player-hp-hud">---</span>/<span id="player-hp-max-hud">---</span></p>
-                </div>
-                
-                <div id="hero-model" class="character-model">
-                    <div id="hero-sprite" class="sprite-icon"></div>
-                </div>
-                
-            </div>
-            
-            <div id="player-stats" class="stats-box">
-                <h2>Status do Herói</h2>
-                <p>Zona: <span id="current-zone">---</span> | Nível: <span id="player-lvl">---</span> (Pontos: <span id="stat-points">0</span>)</p>
-                <p>Nome: <span id="player-name">---</span> | Classe: <span id="player-class">---</span> </p>
-                <p>HP: <span id="player-hp">---</span>/<span id="player-hp-max">---</span></p>
-                <p>ATK: <span id="player-atk">---</span> | DEF: <span id="player-def">---</span></p>
-                <p>EXP: <span id="player-exp">---</span>/<span id="player-exp-next">---</span> | Ouro: <span id="player-gold">---</span> | Poções: <span id="player-potions">---</span></p>
-            </div>
-            
-            <div id="log-box">
-                <p>Bem-vindo ao Reino! Digite seu nome e prepare-se para a aventura.</p>
-            </div>
-
-            <div id="action-area">
+        
+        <div id="screen-initial" class="game-screen active-screen">
+            <h2 class="ascii-font">SELECIONE SEU PERSONAGEM</h2>
+            <div id="initial-area">
                 <input type="text" id="name-input" placeholder="Digite o nome do seu Herói">
-                <button onclick="showClassSelection()">Escolher Classe</button>
+                <button onclick="showClassSelection()">COMEÇAR JORNADA</button>
             </div>
         </div>
+
+        <div id="screen-stats" class="game-screen">
+            <h2 class="ascii-font">DISTRIBUIÇÃO DE PONTOS</h2>
+            <div id="stats-distribution-area" class="stats-box">
+                </div>
+            <p>Seus Status Atuais:</p>
+            <div id="player-stats-summary" class="stats-box"></div>
+        </div>
+        
+        <div id="screen-main" class="game-screen">
+            <div id="game-area">
+            
+                <div id="battle-display" style="display:none;">
+                    
+                    <div id="hud-enemy" class="battle-hud-panel hidden-enemy-hud">
+                        <p class="hud-name" id="enemy-name-display">---</p>
+                        <div class="hp-bar-container"><div id="enemy-hp-bar" class="hp-bar"></div></div>
+                        <p class="enemy-stats-detail">HP: <span id="enemy-hp-detail">---</span> | ATK: <span id="enemy-atk-detail">---</span> | DEF: <span id="enemy-def-detail">---</span></p>
+                    </div>
+
+                    <div id="enemy-model" class="character-model enemy-model hidden-enemy">
+                        <div id="enemy-sprite" class="sprite-icon"></div>
+                    </div>
+
+                    <div id="hud-hero" class="battle-hud-panel">
+                        <p class="hud-name" id="hero-name-display">---</p>
+                        <div class="hp-bar-container"><div id="hero-hp-bar" class="hp-bar"></div></div>
+                        <p class="hero-stats-detail">Nível: <span id="player-lvl-hud">---</span> | HP: <span id="player-hp-hud">---</span>/<span id="player-hp-max-hud">---</span></p>
+                    </div>
+                    
+                    <div id="hero-model" class="character-model">
+                        <div id="hero-sprite" class="sprite-icon"></div>
+                    </div>
+                </div>
+                
+                <div id="player-stats" class="stats-box">
+                    <h2>STATUS GERAL</h2>
+                    <p>ZONA: <span id="current-zone">---</span> | NÍVEL: <span id="player-lvl">---</span> (PONTOS: <span id="stat-points">0</span>)</p>
+                    <p>NOME: <span id="player-name">---</span> | CLASSE: <span id="player-class">---</span> | OURO: <span id="player-gold">---</span> | POÇÕES: <span id="player-potions">---</span></p>
+                    <p>HP: <span id="player-hp">---</span>/<span id="player-hp-max">---</span> | ATK: <span id="player-atk">---</span> | DEF: <span id="player-def">---</span> | EXP: <span id="player-exp">---</span>/<span id="player-exp-next">---</span></p>
+                </div>
+                
+                <div id="log-box" class="ascii-font">
+                    <p>Bem-vindo ao Reino! Digite seu nome e prepare-se para a aventura.</p>
+                </div>
+
+                <div id="action-area" class="ascii-font">
+                    </div>
+            </div>
+        </div>
+        
+        <div id="screen-shop" class="game-screen">
+            <h2 class="ascii-font">MERCADOR DO REINO</h2>
+            <div id="shop-area" class="stats-box">
+                </div>
+            <p>Seu Ouro: <span id="player-gold-shop">---</span></p>
+            <button onclick="changeScreen('main')">VOLTAR AO MENU</button>
+        </div>
+
     </div>
 
     <footer>
-        <p>Projeto RPG Web - Versão Final e Épica.</p>
+        <p>CONSOLE RPG WEB - V. FINAL</p>
     </footer>
 
     <script src="game.js"></script>
