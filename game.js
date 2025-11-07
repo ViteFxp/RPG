@@ -8,7 +8,37 @@ const ZONAS = [
     { nome: "CASTELO DO CAOS", lvlMin: 20, inimigos: ["GUARDA NEGRO", "DEMÔNIO MENOR", "VAMPIRO"], boss: { nome: "O TIRANO SUPREMO", sprite: "😈" }, sprite: "🏰" }
 ];
 
-// --- BALANCEAMENTO DE CLASSE ---
+// --- SKILL TREE: Habilidades Ativas e Passivas (Nova Estrutura) ---
+const SKILLS = {
+    // ATIVAS (Equipáveis, usam o slot 'special')
+    ACTIVE: {
+        'GUERREIRO': {
+            'FURIA': { id: 'FURIA', nome: "Fúria do Machado (Padrão)", custo: 3, descricao: "Dano alto com chance (20%) de dobrar. (CD: 3)", effect: 'default', dmgMult: 1.5 },
+            'SHIELD_BASH': { id: 'SHIELD_BASH', nome: "Golpe de Escudo", custo: 2, descricao: "Dano médio. Reduz DEF do inimigo em 5 permanentemente. (CD: 2)", effect: 'perm_def_down', dmgMult: 1.0 },
+            'CHARGE': { id: 'CHARGE', nome: "Investida", custo: 4, descricao: "Dano muito alto. Ignora DEF do inimigo. (CD: 4)", effect: 'ignore_def', dmgMult: 2.2 }
+        },
+        'MAGO': {
+            'ARCANE_EXPLOSION': { id: 'ARCANE_EXPLOSION', nome: "Explosão Arcana (Padrão)", custo: 3, descricao: "Dano muito alto. Reduz a DEF do inimigo pela metade (1 turno). (CD: 3)", effect: 'temp_def_down', dmgMult: 2.0 },
+            'FIREBALL': { id: 'FIREBALL', nome: "Bola de Fogo", custo: 2, descricao: "Dano alto. Causa dano de fogo extra no próximo turno. (CD: 2)", effect: 'dot', dmgMult: 1.5 },
+            'FREEZE': { id: 'FREEZE', nome: "Congelamento", custo: 4, descricao: "Dano baixo. Impede o inimigo de atacar no próximo turno. (CD: 4)", effect: 'stun', dmgMult: 0.5 }
+        },
+        'ARQUEIRO': {
+            'PRECISION_SHOT': { id: 'PRECISION_SHOT', nome: "Tiro Preciso (Padrão)", custo: 3, descricao: "Dano alto com chance (50%) de crítico (x1.5). (CD: 3)", effect: 'default', dmgMult: 1.2 },
+            'POISON_ARROW': { id: 'POISON_ARROW', nome: "Flecha Envenenada", custo: 2, descricao: "Dano médio. Causa dano de veneno por 3 turnos. (CD: 2)", effect: 'poison', dmgMult: 1.0 },
+            'MULTISHOT': { id: 'MULTISHOT', nome: "Tiro Múltiplo", custo: 4, descricao: "Dano médio. Ataca 3 inimigos na onda. (CD: 4)", effect: 'multi_target', dmgMult: 1.0 }
+        }
+    },
+    // PASSIVAS (Melhorias permanentes, custo único)
+    PASSIVE: {
+        'HEAVY_BLOW': { nome: "Golpe Pesado", custo: 1, descricao: "Chance de 30% de dano +50% no ATK BÁSICO.", atkMult: 0.3, extraDmg: 0.5 },
+        'LIFE_DRAIN': { nome: "Drenagem de Vida", custo: 1, descricao: "Cura por 50% do dano causado (ATK BÁSICO).", lifesteal: 0.5 },
+        'FAST_SHOT': { nome: "Tiro Rápido", custo: 1, descricao: "Pequena chance (20%) de atacar duas vezes no ATK BÁSICO.", extraHitChance: 0.2 },
+        'TAUNT': { nome: "Provocação", custo: 2, descricao: "Aumenta DEF em +10 permanentemente.", defBonus: 10 },
+        'FOCUS': { nome: "Foco Arcana", custo: 2, descricao: "Aumenta ATK em +8 permanentemente.", atkBonus: 8 },
+        'EVASION': { nome: "Evasão", custo: 2, descricao: "Aumenta DEF em +5 e HP Máx em +15 permanentemente.", defBonus: 5, hpBonus: 15 }
+    }
+};
+
 const BASE_STATS = {
     'GUERREIRO': { hp: 160, atk: 21, def: 12, sprite: '🛡️' }, 
     'MAGO': { hp: 110, atk: 26, def: 6, sprite: '🔮' },       
@@ -16,14 +46,18 @@ const BASE_STATS = {
 };
 
 let player;
-let currentEnemy;
 let isAnimating = false;
 let zonaAtual = 0;
 let turnCount = 0; 
-const SPECIAL_COOLDOWN = 3; 
-let isGodModeActive = false; // Flag para o Easter Egg
+let isGodModeActive = false; 
 
-// --- CLASSE JOGADOR (Adicionado item Chave Secreta) ---
+// --- NOVO SISTEMA DE ONDA E ALVOS ---
+let currentWave = [];
+let waveIndex = 0;
+let totalWaves = 0;
+let currentTargetIndex = 0;
+
+// --- CLASSE JOGADOR (Modificado para Habilidades e Cooldown Dinâmico) ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -40,32 +74,55 @@ class Player {
         this.potions = 2;
         this.sprite = stats.sprite;
         this.statPoints = 0;
-        this.lastSpecialTurn = -SPECIAL_COOLDOWN; 
-        this.secretKey = false; // Inventário da Chave Secreta
+        this.skillPoints = 0;
+        this.secretKey = false;
+        
+        // Habilidades
+        this.unlockedActiveSkills = {}; // { 'FURIA': skillObject }
+        this.unlockedPassiveSkills = {}; // { 'HEAVY_BLOW': skillObject }
+        this.equippedActiveSkill = SKILLS.ACTIVE[className]['FURIA'] || SKILLS.ACTIVE[className]['ARCANE_EXPLOSION'] || SKILLS.ACTIVE[className]['PRECISION_SHOT']; // Habilidade equipada (padrão)
+        
+        // Cooldown
+        this.lastSpecialTurn = -this.equippedActiveSkill.custo; 
+        
+        // Efeitos
+        this.enemyDots = {}; // Dano ao longo do tempo (DoT) no inimigo
+        this.isStunned = false; // Se o player está atordoado
     }
 
     levelUp() {
         this.lvl++;
         this.exp -= this.expToNextLvl;
         this.expToNextLvl = Math.floor(this.expToNextLvl * 1.5);
-        this.statPoints += 6; 
-        this.hpMax += 15; // Aumento de HP no level up ligeiramente maior.
+        this.statPoints += 3; 
+        this.skillPoints += 1;
+        this.hpMax += 15; 
         this.hp = this.hpMax;
-        logMessage(`[LVL UP] VOCÊ ALCANÇOU O NÍVEL ${this.lvl}! PONTOS GANHOS.`);
         
-        if (!currentEnemy) {
-            changeScreen('stats'); 
+        // Progressão Automática
+        this.attack++;
+        this.defense++;
+        this.hpMax += 1; 
+        this.hp += 1;
+        this.statPoints -= 3;
+        
+        logMessage(`[LVL UP] VOCÊ ALCANÇOU O NÍVEL ${this.lvl}!`);
+        logMessage(`[LVL UP] Status aprimorados automaticamente!`);
+        logMessage(`[LVL UP] VOCÊ GANHOU 1 PONTO DE HABILIDADE (SP)!`);
+        
+        if (currentWave.length === 0) {
+            showMainMenu();
         }
     }
 }
 
-// --- CLASSE INIMIGO (Balanceamento Aprimorado) ---
+// --- CLASSE INIMIGO (Adicionado Efeitos de Status) ---
 class Enemy {
     constructor(lvl, isBoss = false) {
         const zona = ZONAS[zonaAtual];
         let name, hpBase, atkBase, defBase, sprite;
 
-        // Progressão de atributos ajustada (escalonamento mais linear e recompensador)
+        // Progressão de atributos ajustada
         const hpMultiplier = isBoss ? 45 : 25;
         const atkMultiplier = isBoss ? 10 : 6;
         const defMultiplier = isBoss ? 5 : 3;
@@ -86,20 +143,26 @@ class Enemy {
 
         this.name = name;
         this.lvl = lvl;
+        this.id = Math.random(); 
         this.hp = hpBase;
         this.attack = atkBase;
         this.defense = defBase;
-        // Recompensa de EXP/Gold ajustada
         this.expReward = Math.floor(lvl * (isBoss ? 50 : 25)) + (isBoss ? 200 : 50); 
         this.goldReward = Math.floor(Math.random() * (isBoss ? 70 : 25) * lvl) + 20;
         this.isBoss = isBoss;
         this.sprite = sprite;
         this.initialHp = hpBase;
+        
+        // Efeitos de Status
+        this.isStunned = false;
+        this.dotTurns = 0; // Dano ao longo do tempo (FOGO)
+        this.poisonTurns = 0; // Veneno (POISON)
+        this.dotDamage = 0;
+        this.initialDefense = defBase;
     }
 }
 
 // --- GERENCIAMENTO DE TELAS ---
-
 function changeScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
     screens.forEach(screen => {
@@ -112,33 +175,36 @@ function changeScreen(screenId) {
     }
 }
 
-// --- FUNÇÕES DE INTERFACE (Modificada para mostrar Cooldown e Chave Secreta) ---
+// --- FUNÇÕES DE INTERFACE (Atualizado para Inventário e Habilidade Equipada) ---
 
 function updateStats() {
     if (!player) return;
 
-    // Calcula o Cooldown
-    const turnsRemaining = Math.max(0, SPECIAL_COOLDOWN - (turnCount - player.lastSpecialTurn));
+    const skill = player.equippedActiveSkill;
+    const turnsRemaining = Math.max(0, skill.custo - (turnCount - player.lastSpecialTurn));
     const cooldownStatus = turnsRemaining > 0 ? `(CD: ${turnsRemaining})` : `(PRONTO!)`;
-    
-    // Status da Chave Secreta
     const keyStatus = player.secretKey ? '🔑 (POSSUI)' : '(NÃO)';
+
+    const passiveSkillsList = Object.keys(player.unlockedPassiveSkills).length > 0
+        ? Object.values(player.unlockedPassiveSkills).map(s => s.nome).join(', ')
+        : 'Nenhuma';
 
     // --- Atualização do Status Box (Geral) ---
     const statsHtml = `
-        <p>ZONA: ${ZONAS[zonaAtual].sprite} ${ZONAS[zonaAtual].nome} | NÍVEL: ${player.lvl} (PONTOS: ${player.statPoints})</p>
+        <p>ZONA: ${ZONAS[zonaAtual].sprite} ${ZONAS[zonaAtual].nome} | NÍVEL: ${player.lvl} (SP: ${player.skillPoints})</p>
         <p>NOME: ${player.name} | CLASSE: ${player.class} | OURO: ${player.gold} | POÇÕES: ${player.potions}</p>
-        <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense} | SKILL: ${cooldownStatus} | CHAVE SECRETA: ${keyStatus}</p>
+        <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense}</p>
+        <p>HABILIDADE EQUIPADA: ${skill.nome} (${skill.custo} CD) ${cooldownStatus}</p>
+        <p>PASSIVAS: ${passiveSkillsList} | CHAVE: ${keyStatus}</p>
         <p>EXP: ${player.exp}/${player.expToNextLvl}</p>
     `;
     
-    // Atualiza o painel geral
     document.getElementById('player-stats').innerHTML = `<h2>STATUS GERAL</h2>${statsHtml}`;
-    // Atualiza o painel de resumo na tela de distribuição/loja
     document.getElementById('player-stats-summary').innerHTML = statsHtml;
     document.getElementById('player-gold-shop').textContent = player.gold;
+    document.getElementById('player-sp-shop').textContent = player.skillPoints;
     
-    // --- Atualização do HUD de Batalha ---
+    // --- Atualização do HUD de Batalha (Onda e Alvo) ---
     const heroHpPercent = (player.hp / player.hpMax) * 100;
     document.getElementById('hero-hp-bar').style.width = heroHpPercent + '%';
     document.getElementById('hero-name-display').textContent = player.name;
@@ -150,16 +216,23 @@ function updateStats() {
     const hudEnemy = document.getElementById('hud-enemy');
     const enemyModel = document.getElementById('enemy-model');
     
+    const currentEnemy = currentWave[currentTargetIndex];
+
     if (currentEnemy) {
         hudEnemy.classList.remove('hidden-enemy-hud');
         enemyModel.classList.remove('hidden-enemy');
         enemyModel.classList.add('monster-appeared'); 
 
+        const waveStatus = totalWaves > 0 ? `(Onda ${waveIndex + 1}/${totalWaves})` : '';
+        let enemyStatus = '';
+        if (currentEnemy.dotTurns > 0) enemyStatus += ' 🔥';
+        if (currentEnemy.poisonTurns > 0) enemyStatus += ' ☣️';
+        if (currentEnemy.isStunned) enemyStatus += ' 🥶';
+
+        document.getElementById('enemy-name-display').textContent = `${currentEnemy.sprite} ${currentEnemy.name} ${enemyStatus} ${waveStatus} (Lvl ${currentEnemy.lvl})`;
+        
         const enemyHpPercent = (currentEnemy.hp / currentEnemy.initialHp) * 100;
         document.getElementById('enemy-hp-bar').style.width = enemyHpPercent + '%';
-        document.getElementById('enemy-name-display').textContent = currentEnemy.name + ` (Lvl ${currentEnemy.lvl})`;
-        document.getElementById('enemy-sprite').textContent = currentEnemy.sprite;
-        
         document.getElementById('enemy-hp-detail').textContent = Math.max(0, currentEnemy.hp);
         document.getElementById('enemy-atk-detail').textContent = currentEnemy.attack;
         document.getElementById('enemy-def-detail').textContent = currentEnemy.defense;
@@ -190,8 +263,7 @@ function triggerAnimation(targetElementId, animationClass) {
     }, 400); 
 }
 
-
-// --- FUNÇÕES DE FLUXO DO JOGO ---
+// --- FUNÇÕES DE INÍCIO E MENU PRINCIPAL ---
 
 function showClassSelection() {
     const name = document.getElementById('name-input').value.trim();
@@ -203,15 +275,18 @@ function showClassSelection() {
     const initialArea = document.getElementById('initial-area');
     initialArea.innerHTML = `
         <p class="ascii-font">ESCOLHA SUA CLASSE, ${name}:</p>
-        <button onclick="startGame('${name}', 'GUERREIRO')">🛡️ GUERREIRO (FÚRIA DO MACHADO)</button>
-        <button onclick="startGame('${name}', 'MAGO')">🔮 MAGO (EXPLOSÃO ARCANA)</button>
-        <button onclick="startGame('${name}', 'ARQUEIRO')">🏹 ARQUEIRO (TIRO PRECISO)</button>
+        <button onclick="startGame('${name}', 'GUERREIRO')">🛡️ GUERREIRO (HP/DEF)</button>
+        <button onclick="startGame('${name}', 'MAGO')">🔮 MAGO (ATK Alto)</button>
+        <button onclick="startGame('${name}', 'ARQUEIRO')">🏹 ARQUEIRO (Equilibrado)</button>
     `;
 }
 
-
 function startGame(name, className) {
     player = new Player(name, className);
+    // Adiciona a habilidade padrão ao desbloqueio
+    const defaultSkill = player.equippedActiveSkill;
+    player.unlockedActiveSkills[defaultSkill.id] = defaultSkill;
+    
     document.getElementById('battle-display').style.display = 'flex';
     logMessage(`[INÍCIO] O ${className} ${name} INICIA A AVENTURA!`);
     updateStats();
@@ -219,54 +294,10 @@ function startGame(name, className) {
     showMainMenu();
 }
 
-function showStatDistribution() {
-    changeScreen('stats');
-    logMessage(`[LVL UP] VOCÊ TEM ${player.statPoints} PONTOS PARA DISTRIBUIR!`);
-    
-    const currentHpDisplay = player.hpMax; 
-    
-    const buttons = `
-        <p>PONTOS RESTANTES: <span style="color:#ff0000">${player.statPoints}</span></p>
-        <button class="btn-stat" onclick="distributePoint('HP', 15)">+15 HP MÁX (ATUAL: ${currentHpDisplay})</button>
-        <button class="btn-stat" onclick="distributePoint('ATK', 4)">+4 ATK (ATUAL: ${player.attack})</button>
-        <button class="btn-stat" onclick="distributePoint('DEF', 3)">+3 DEF (ATUAL: ${player.defense})</button>
-        <br>
-        <button onclick="showMainMenu()" ${player.statPoints > 0 ? 'disabled' : ''}>CONTINUAR JORNADA</button>
-    `;
-    document.getElementById('stats-distribution-area').innerHTML = buttons;
-    updateStats();
-}
-
-function distributePoint(stat, amount) {
-    if (player.statPoints <= 0) {
-        logMessage("[ERRO] SEM PONTOS.");
-        return;
-    }
-    
-    player.statPoints--;
-    
-    if (stat === 'HP') {
-        player.hpMax += amount;
-        player.hp += amount;
-    } else if (stat === 'ATK') {
-        player.attack += amount;
-    } else if (stat === 'DEF') {
-        player.defense += amount;
-    }
-
-    logMessage(`[STATUS] +${amount} EM ${stat}!`);
-    updateStats();
-    showStatDistribution();
-}
-
 function showMainMenu() {
     changeScreen('main'); 
-    if (player.statPoints > 0) {
-        showStatDistribution();
-        return;
-    }
     
-    currentEnemy = null;
+    currentWave = []; 
     updateStats();
     
     const zona = ZONAS[zonaAtual];
@@ -278,178 +309,195 @@ function showMainMenu() {
 
     const buttons = `
         <p>AÇÃO NA ${zona.nome} ${zona.sprite}:</p>
-        <button onclick="hunt(false)">1. EXPLORAR (MONSTRO COMUM)</button>
-        <button onclick="hunt(true)">2. DESAFIAR ${zona.boss.nome} (BOSS)</button>
+        <button onclick="startWaves(false)">1. EXPLORAR (MONSTROS COMUNS)</button>
+        <button onclick="startWaves(true)">2. DESAFIAR ${zona.boss.nome} (CHEFE)</button>
         ${advanceButton}
         <button onclick="inspectZone()">4. INSPECIONAR ZONA (BUSCAR SEGREDO)</button>
-        <button onclick="openShop()">5. VISITAR O MERCADOR</button>
+        <button onclick="openShop()">5. LOJA E TREINAMENTO (SKILL TREE)</button>
+        <button onclick="openInventory()">6. INVENTÁRIO (EQUIPAR SKILL)</button>
     `;
     updateActions(buttons);
 }
 
-function inspectZone() {
-    logMessage(`[AÇÃO] VOCÊ PROCURA POR SINAIS E PISTAS na ${ZONAS[zonaAtual].nome}...`);
-    
-    // Se a chave for encontrada e o Easter Egg ainda não tiver sido ativado
-    if (player.secretKey && !isGodModeActive) {
-        player.secretKey = false; // A chave é consumida/usada para revelar a pista
-        logMessage("🔑 Você usa a Chave Secreta em uma pedra marcada.");
-        // Pista: O código é o nome do criador do modo mais apelão dos jogos.
-        logMessage(`[PISTA SECRETA] Uma inscrição aparece na pedra: "O modo dos Deuses foi um presente do... <span style='color:red'>...MODE</span>".`);
-        logMessage("A chave se desintegra. Você pode tentar o código na loja.");
-    } else if (isGodModeActive) {
-        logMessage("[INSPEÇÃO] O local parece vazio. O poder já está com você.");
-    } else {
-        logMessage("[INSPEÇÃO] Você encontra apenas terra e cascalho. Talvez outro item seja necessário.");
-    }
-    
+// --- FUNÇÕES DE INVENTÁRIO (Equipamento de Habilidade) ---
+function openInventory() {
+    changeScreen('inventory');
     updateStats();
-    setTimeout(showMainMenu, 2000);
+    
+    const activeSkills = player.unlockedActiveSkills;
+    let skillListHtml = '<h3>HABILIDADES ATIVAS (Selecione 1 para equipar):</h3>';
+
+    for (const id in activeSkills) {
+        const skill = activeSkills[id];
+        const isEquipped = player.equippedActiveSkill.id === id;
+        
+        skillListHtml += `
+            <div class="inventory-item ${isEquipped ? 'equipped' : ''}">
+                <p><strong>${isEquipped ? '✅' : ''} ${skill.nome} (CD: ${skill.custo})</strong></p>
+                <p class="desc">${skill.descricao}</p>
+                <button onclick="equipSkill('${id}')" ${isEquipped ? 'disabled' : ''}>
+                    ${isEquipped ? 'EQUIPADO' : 'EQUIPAR'}
+                </button>
+            </div>
+        `;
+    }
+    
+    const inventoryHtml = `
+        ${skillListHtml}
+        
+        <h3>POÇÕES: ${player.potions}</h3>
+        <p>Use a poção apenas durante a batalha.</p>
+        
+        <button onclick="showMainMenu()">VOLTAR AO MENU</button>
+    `;
+    document.getElementById('inventory-area').innerHTML = inventoryHtml;
 }
 
-
-function advanceZone() {
-    if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
-        zonaAtual++;
-        logMessage(`[ZONA] VOCÊ ENTROU NA ${ZONAS[zonaAtual].nome}!`);
-        showMainMenu();
+function equipSkill(skillId) {
+    if (player.unlockedActiveSkills[skillId]) {
+        const newSkill = player.unlockedActiveSkills[skillId];
+        player.equippedActiveSkill = newSkill;
+        // Reseta o cooldown para o novo CD da skill
+        player.lastSpecialTurn = turnCount - newSkill.custo; 
+        logMessage(`[EQUIP] Habilidade Ativa: "${newSkill.nome}" equipada com sucesso!`);
+        openInventory(); 
     } else {
-        logMessage("[ZONA] NÍVEL INSUFICIENTE PARA AVANÇAR.");
-        showMainMenu();
+        logMessage("[ERRO] Habilidade não desbloqueada.");
     }
 }
 
-function hunt(isBoss) {
-    turnCount = 0; // Reinicia o contador de turnos ao iniciar uma nova batalha
+
+// --- FUNÇÕES DE ONDAS E COMBATE ---
+
+function startWaves(isBoss) {
+    waveIndex = 0;
+    currentTargetIndex = 0;
+    turnCount = 0; 
+    
+    // Reseta cooldown no início da batalha
+    player.lastSpecialTurn = -player.equippedActiveSkill.custo; 
     
     const zona = ZONAS[zonaAtual];
-    let lvlMonstro = zona.lvlMin + Math.floor(Math.random() * 3);
+    const baseLvl = zona.lvlMin + Math.floor(Math.random() * 3);
     
-    if (isBoss) {
-        lvlMonstro = Math.max(player.lvl, zona.lvlMin) + 2; 
-        currentEnemy = new Enemy(lvlMonstro, true);
-        logMessage(`[BATALHA] CHEFE: ${currentEnemy.sprite} ${currentEnemy.name} APARECEU!`);
-    } else {
-        currentEnemy = new Enemy(lvlMonstro, false);
-        logMessage(`[BATALHA] ${currentEnemy.sprite} ${currentEnemy.name} (LVL ${currentEnemy.lvl}) APARECEU!`);
+    totalWaves = isBoss ? 3 : (Math.random() < 0.5 ? 2 : 1); 
+    
+    logMessage(`[BATALHA] ENCONTRADO ${totalWaves} ONDA(S) DE INIMIGOS!`);
+    
+    generateWave(isBoss, baseLvl);
+}
+
+function generateWave(isBoss, baseLvl) {
+    currentWave = [];
+    currentTargetIndex = 0; 
+    
+    if (waveIndex >= totalWaves) {
+        victoryEnd();
+        return;
     }
-    
-    updateStats();
+
+    let enemyCount = 0;
+    let lvlMonstro = baseLvl + waveIndex;
+
+    if (isBoss && waveIndex === totalWaves - 1) {
+        enemyCount = 1;
+        lvlMonstro = Math.max(player.lvl, baseLvl) + 2; 
+        currentWave.push(new Enemy(lvlMonstro, true));
+        logMessage(`[ONDA ${waveIndex + 1}] CHEFE ${currentWave[0].sprite} ${currentWave[0].name} APARECEU!`);
+    } else {
+        enemyCount = Math.floor(Math.random() * 3) + 1; 
+        for (let i = 0; i < enemyCount; i++) {
+            currentWave.push(new Enemy(lvlMonstro, false));
+        }
+        logMessage(`[ONDA ${waveIndex + 1}] ENCONTRADO ${enemyCount} MONSTRO(S) COMUNS!`);
+    }
+
+    updateStats(); 
     showBattleMenu();
 }
 
 function showBattleMenu() {
     updateStats();
-    if (isAnimating) return;
+    if (isAnimating || currentWave.length === 0) return;
     
-    const turnsRemaining = Math.max(0, SPECIAL_COOLDOWN - (turnCount - player.lastSpecialTurn));
+    const skill = player.equippedActiveSkill;
+    const turnsRemaining = Math.max(0, skill.custo - (turnCount - player.lastSpecialTurn));
     const isSpecialReady = turnsRemaining === 0;
 
     const specialButtonText = isSpecialReady 
-        ? `2. HABILIDADE ÚNICA` 
-        : `2. HABILIDADE ÚNICA (CD: ${turnsRemaining})`;
+        ? `2. ${skill.nome}` 
+        : `2. ${skill.nome} (CD: ${turnsRemaining})`;
 
-    const buttons = `
+    // Cria botões de alvo
+    let targetButtons = '<p>Selecione o Alvo (T):</p>';
+    currentWave.forEach((enemy, index) => {
+        const isTarget = index === currentTargetIndex;
+        let status = '';
+        if (enemy.dotTurns > 0) status += '🔥';
+        if (enemy.poisonTurns > 0) status += '☣️';
+        targetButtons += `<button onclick="setTarget(${index})" class="${isTarget ? 'btn-target-active' : 'btn-target'}">T${index + 1}: ${enemy.sprite} ${enemy.name} ${status} (${Math.max(0, enemy.hp)} HP)</button>`;
+    });
+
+    const actionButtons = `
         <button onclick="playerAttack('normal')">1. ATK BÁSICO</button>
         <button onclick="playerAttack('special')" ${!isSpecialReady ? 'disabled' : ''}>${specialButtonText}</button>
         <button onclick="usePotion()">3. USAR POÇÃO (${player.potions})</button>
         <button onclick="attemptToFlee()">4. TENTAR FUGIR</button>
     `;
-    updateActions(buttons);
+
+    updateActions(targetButtons + actionButtons);
 }
 
-// --- FUNÇÕES DE COMBATE ---
-
-function attemptToFlee() {
-    if (isAnimating) return;
-    isAnimating = true;
-    turnCount++; // A fuga conta como um turno
-    updateStats();
-
-    if (currentEnemy.isBoss) {
-        logMessage("[FUGA] É IMPOSSÍVEL FUGIR DE UM CHEFE!");
-        setTimeout(enemyTurn, 800);
-        return;
-    }
-    
-    const fleeChance = 0.6 + ((player.lvl - currentEnemy.lvl) * 0.05);
-
-    if (Math.random() < fleeChance) {
-        logMessage("[FUGA] VOCÊ FUGIU COM SUCESSO!");
-        currentEnemy = null;
-        isAnimating = false;
-        setTimeout(showMainMenu, 500);
-    } else {
-        logMessage("[FUGA] FALHOU! O INIMIGO BLOQUEOU.");
-        setTimeout(enemyTurn, 800);
-    }
+function setTarget(index) {
+    currentTargetIndex = index;
+    showBattleMenu(); 
 }
-
 
 function playerAttack(type) {
+    const currentEnemy = currentWave[currentTargetIndex];
     if (!currentEnemy || isAnimating) return;
     
-    // Verifica cooldown
+    isAnimating = true;
+
     if (type === 'special') {
-        const turnsRemaining = SPECIAL_COOLDOWN - (turnCount - player.lastSpecialTurn);
+        const skill = player.equippedActiveSkill;
+        const turnsRemaining = Math.max(0, skill.custo - (turnCount - player.lastSpecialTurn));
         if (turnsRemaining > 0) {
             logMessage(`[ERRO] HABILIDADE EM COOLDOWN. FALTAM ${turnsRemaining} TURNOS.`);
+            isAnimating = false;
             return;
         }
-        player.lastSpecialTurn = turnCount; // Reseta o cooldown
+        player.lastSpecialTurn = turnCount; 
     }
     
-    isAnimating = true;
-    turnCount++; // Conta o turno do jogador
+    turnCount++; 
     triggerAnimation('hero-sprite', 'attacking');
 
     let damage = 0;
     
     if (type === 'normal') {
         damage = player.attack + Math.floor(Math.random() * 8);
-        logMessage(`[AÇÃO] ${player.class} USA ATK BÁSICO.`);
+        logMessage(`[AÇÃO] ${player.class} USA ATK BÁSICO no T${currentTargetIndex + 1}.`);
+        
+        // Aplica Passivas ao ATK BÁSICO
+        damage = applyPassiveEffects(damage);
+        
     } else if (type === 'special') {
-        let msg = "";
+        const skill = player.equippedActiveSkill;
+        damage = player.attack * skill.dmgMult + Math.floor(Math.random() * 10);
+        logMessage(`[HABILIDADE] ${skill.nome} USADA no T${currentTargetIndex + 1}.`);
         
-        // --- BALANCEAMENTO DE SKILLS ---
-        if (player.class === 'GUERREIRO') { 
-            damage = player.attack * 1.5 + Math.floor(Math.random() * 12); // Dano forte
-            if (Math.random() < 0.2) { // 20% de chance de Fúria (Dano x2)
-                 damage *= 2;
-                 msg = "[HABILIDADE] GUERREIRO ATIVOU FÚRIA! DANO DOBRADO!";
-            } else {
-                 msg = "[HABILIDADE] GUERREIRO USA FÚRIA DO MACHADO!";
-            }
-        }
-        
-        if (player.class === 'MAGO') { 
-            damage = player.attack * 2 + Math.floor(Math.random() * 10); // Dano muito alto
-            const oldDef = currentEnemy.defense;
-            currentEnemy.defense = Math.max(0, currentEnemy.defense / 2); // Reduz DEF pela metade (efeito de 1 turno)
-            msg = `[HABILIDADE] MAGO LANÇA EXPLOSÃO ARCANA! DEFESA REDUZIDA (${oldDef.toFixed(1)} -> ${currentEnemy.defense.toFixed(1)})`;
-        }
-        
-        if (player.class === 'ARQUEIRO') { 
-            damage = player.attack * 1.2 + Math.floor(Math.random() * 8); 
-            if (Math.random() < 0.5) { // 50% de chance de acerto crítico (Dano x1.5)
-                damage = damage * 1.5;
-                msg = "[HABILIDADE] ARQUEIRO ACERTA TIRO PRECISO! (CRÍTICO)";
-            } else {
-                msg = "[HABILIDADE] ARQUEIRO USA TIRO PRECISO.";
-            }
-        }
-        
-        logMessage(msg);
+        // Aplica Efeitos Ativos
+        damage = applyActiveSkillEffect(currentEnemy, skill, damage);
     }
     
-    const finalDamage = Math.max(0, Math.floor(damage - currentEnemy.defense));
+    const finalDamage = Math.max(0, Math.floor(damage - (currentEnemy.isBoss && type === 'special' && player.equippedActiveSkill.effect === 'ignore_def' ? 0 : currentEnemy.defense)));
     currentEnemy.hp -= finalDamage;
-    logMessage(`[DANO] CAUSOU ${finalDamage} DE DANO AO ${currentEnemy.name}!`);
+    logMessage(`[DANO] CAUSOU ${finalDamage} DE DANO ao ${currentEnemy.name}!`);
     
-    // Reverte o efeito da habilidade do MAGO (redução de defesa) após o dano
-    if (player.class === 'MAGO' && type === 'special') {
-         // Cria um novo inimigo temporário para obter a defesa base do nível
-         currentEnemy.defense = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).defense; 
+    // Reverte a DEF temporária (se for o caso)
+    if (type === 'special' && player.equippedActiveSkill.effect === 'temp_def_down') {
+         currentEnemy.defense = currentEnemy.initialDefense;
          logMessage(`[EFEITO] DEFESA do inimigo voltou ao normal: ${currentEnemy.defense.toFixed(1)}`);
     }
 
@@ -458,9 +506,173 @@ function playerAttack(type) {
     updateStats(); 
 
     if (currentEnemy.hp <= 0) {
-        setTimeout(victory, 800);
+        logMessage(`[DERROTA] ${currentEnemy.name} (T${currentTargetIndex + 1}) FOI DERROTADO!`);
+        handleEnemyDefeat(currentEnemy);
+    } else {
+        // Verifica TIRO RÁPIDO para ataque extra
+        if (type === 'normal' && player.unlockedPassiveSkills['FAST_SHOT'] && Math.random() < player.unlockedPassiveSkills['FAST_SHOT'].extraHitChance) {
+             setTimeout(() => fastShotAttack(currentEnemy), 500); 
+        } else {
+            setTimeout(enemyTurn, 800);
+        }
+    }
+}
+
+function applyPassiveEffects(baseDamage) {
+    let damage = baseDamage;
+    
+    // GOLPE PESADO (Heavy Blow)
+    if (player.unlockedPassiveSkills['HEAVY_BLOW'] && Math.random() < player.unlockedPassiveSkills['HEAVY_BLOW'].atkMult) {
+        damage *= (1 + player.unlockedPassiveSkills['HEAVY_BLOW'].extraDmg);
+        logMessage(`[PASSIVA] GOLPE PESADO ativou!`);
+    }
+    
+    // DRENAGEM DE VIDA (Life Drain)
+    if (player.unlockedPassiveSkills['LIFE_DRAIN']) {
+        const heal = Math.floor(damage * player.unlockedPassiveSkills['LIFE_DRAIN'].lifesteal);
+        player.hp = Math.min(player.hpMax, player.hp + heal);
+        logMessage(`[PASSIVA] DRENAGEM DE VIDA curou ${heal} HP.`);
+    }
+
+    return damage;
+}
+
+function applyActiveSkillEffect(enemy, skill, baseDamage) {
+    let damage = baseDamage;
+    
+    switch (skill.effect) {
+        case 'default':
+            // Efeitos padrão (Fúria/Tiro Preciso)
+            if (skill.id === 'FURIA' && Math.random() < 0.2) {
+                 damage *= 2;
+                 logMessage("[EFEITO] FÚRIA ATIVOU! DANO DOBRADO!");
+            } else if (skill.id === 'PRECISION_SHOT' && Math.random() < 0.5) {
+                damage *= 1.5;
+                logMessage("[EFEITO] TIRO PRECISO (CRÍTICO)!");
+            }
+            break;
+            
+        case 'temp_def_down':
+            // Explosão Arcana
+            enemy.defense = Math.max(0, enemy.defense / 2);
+            logMessage(`[EFEITO] DEFESA REDUZIDA temporariamente!`);
+            break;
+
+        case 'perm_def_down':
+            // Golpe de Escudo
+            enemy.initialDefense = Math.max(0, enemy.initialDefense - 5);
+            enemy.defense = enemy.initialDefense;
+            logMessage(`[EFEITO] DEFESA REDUZIDA permanentemente em 5!`);
+            break;
+            
+        case 'ignore_def':
+            // Investida (Dano é calculado ignorando DEF na playerAttack)
+            logMessage("[EFEITO] DEFESA IGNORADA!");
+            break;
+            
+        case 'dot':
+            // Bola de Fogo
+            enemy.dotTurns = 2; // Dura mais 2 turnos (total 3 com este)
+            enemy.dotDamage = player.attack * 0.2; // Dano baseado no ATK
+            logMessage(`[EFEITO] O alvo está pegando 🔥 FOGO!`);
+            break;
+
+        case 'poison':
+            // Flecha Envenenada
+            enemy.poisonTurns = 3;
+            enemy.dotDamage = player.attack * 0.15;
+            logMessage(`[EFEITO] O alvo está ☣️ ENVENENADO!`);
+            break;
+            
+        case 'stun':
+            // Congelamento
+            enemy.isStunned = true;
+            logMessage(`[EFEITO] O alvo está 🥶 CONGELADO e não atacará no próximo turno!`);
+            break;
+            
+        case 'multi_target':
+            // Tiro Múltiplo (Ataca 3)
+            let targetsHit = 0;
+            const waveCopy = [...currentWave]; 
+            // Ataque adicional nos inimigos restantes
+            for (let i = 0; i < waveCopy.length && targetsHit < 3; i++) {
+                if (waveCopy[i].id !== enemy.id) { // Não ataca o alvo principal novamente
+                    const extraDamage = Math.max(0, Math.floor(player.attack * 0.5 - waveCopy[i].defense));
+                    waveCopy[i].hp -= extraDamage;
+                    logMessage(`[DANO MÚLTIPLO] T${currentWave.indexOf(waveCopy[i]) + 1} recebeu ${extraDamage} de DANO!`);
+                    targetsHit++;
+                }
+            }
+            break;
+    }
+    return damage;
+}
+
+
+function fastShotAttack(currentEnemy) {
+    if (currentEnemy.hp <= 0) {
+        setTimeout(enemyTurn, 500);
+        return;
+    }
+    
+    logMessage(`[PASSIVA] TIRO RÁPIDO ativou! ATAQUE EXTRA!`);
+    triggerAnimation('hero-sprite', 'attacking');
+    
+    let damage = player.attack + Math.floor(Math.random() * 8);
+    // Aplica passivas no ataque extra (exceto Tiro Rápido, claro)
+    damage = applyPassiveEffects(damage); 
+    
+    const finalDamage = Math.max(0, Math.floor(damage - currentEnemy.defense));
+    currentEnemy.hp -= finalDamage;
+    logMessage(`[DANO] CAUSOU ${finalDamage} de DANO extra!`);
+    
+    if (currentEnemy.hp <= 0) {
+        logMessage(`[DERROTA] ${currentEnemy.name} (T${currentTargetIndex + 1}) FOI DERROTADO!`);
+        handleEnemyDefeat(currentEnemy);
     } else {
         setTimeout(enemyTurn, 800);
+    }
+    updateStats(); 
+}
+
+function handleEnemyDefeat(defeatedEnemy) {
+    const index = currentWave.findIndex(e => e.id === defeatedEnemy.id);
+    if (index !== -1) {
+        currentWave.splice(index, 1);
+    }
+
+    // Processa recompensas
+    player.exp += defeatedEnemy.expReward;
+    player.gold += defeatedEnemy.goldReward;
+    logMessage(`[LOOT] +${defeatedEnemy.expReward} EXP, +${defeatedEnemy.goldReward} OURO.`);
+
+    // Drop de Poção
+    if (Math.random() < (defeatedEnemy.isBoss ? 0.6 : 0.3)) { 
+        player.potions++;
+        logMessage(`[LOOT] ENCONTROU 1 POÇÃO!`);
+    }
+
+    // Level Up
+    if (player.exp >= player.expToNextLvl) {
+        player.levelUp();
+    }
+    
+    // Atualiza o alvo
+    if (currentTargetIndex >= currentWave.length) {
+        currentTargetIndex = Math.max(0, currentWave.length - 1);
+    }
+
+    if (currentWave.length > 0) {
+        updateStats();
+        setTimeout(enemyTurn, 800);
+    } else {
+        waveIndex++;
+        if (waveIndex < totalWaves) {
+            logMessage(`[PROGRESSO] ONDA ${waveIndex} DE ${totalWaves} COMPLETA!`);
+            setTimeout(() => generateWave(defeatedEnemy.isBoss, defeatedEnemy.lvl), 1500);
+        } else {
+            victoryEnd();
+        }
     }
 }
 
@@ -469,12 +681,12 @@ function usePotion() {
     isAnimating = true;
 
     if (player.potions > 0) {
-        const heal = Math.floor(player.hpMax * 0.35) + 30; // Cura um pouco maior
+        const heal = Math.floor(player.hpMax * 0.35) + 30; 
         player.hp = Math.min(player.hpMax, player.hp + heal);
         player.potions--;
         logMessage(`[CURA] VOCÊ USOU POÇÃO E RECUPEROU ${heal} HP.`);
         updateStats();
-        turnCount++; // A poção conta como um turno
+        turnCount++; 
         setTimeout(enemyTurn, 500);
     } else {
         logMessage("[ERRO] SEM POÇÕES RESTANTES!");
@@ -483,20 +695,72 @@ function usePotion() {
     }
 }
 
+function applyDotEffects() {
+    let anyDot = false;
+    currentWave.forEach(enemy => {
+        if (enemy.dotTurns > 0) {
+            const damage = Math.floor(enemy.dotDamage + Math.random() * 2);
+            enemy.hp -= damage;
+            enemy.dotTurns--;
+            logMessage(`[DOT 🔥] ${enemy.name} recebeu ${damage} de DANO de FOGO. (Restam ${enemy.dotTurns}T)`);
+            anyDot = true;
+        }
+        if (enemy.poisonTurns > 0) {
+            const damage = Math.floor(enemy.dotDamage + Math.random() * 1);
+            enemy.hp -= damage;
+            enemy.poisonTurns--;
+            logMessage(`[DOT ☣️] ${enemy.name} recebeu ${damage} de DANO de VENENO. (Restam ${enemy.poisonTurns}T)`);
+            anyDot = true;
+        }
+        
+        // Verifica se o inimigo morreu pelo DOT
+        if (enemy.hp <= 0 && currentWave.includes(enemy)) {
+             logMessage(`[DERROTA] ${enemy.name} (T${currentWave.indexOf(enemy) + 1}) FOI DERROTADO pelo dano de status!`);
+             handleEnemyDefeat(enemy);
+        }
+    });
+    return anyDot;
+}
+
+
 function enemyTurn() {
     if (player.hp <= 0) return gameOver();
-
+    if (currentWave.length === 0) {
+        isAnimating = false;
+        return;
+    }
+    
+    // 1. Aplica DOTs antes do ataque inimigo
+    applyDotEffects();
+    
+    // Se todos morreram pelos DOTs
+    if (currentWave.length === 0) {
+        isAnimating = false;
+        return;
+    }
+    
     const enemySprite = document.getElementById('enemy-sprite');
-    // Animação de ataque do inimigo
-    enemySprite.style.animation = 'attack-move 0.3s ease-in-out reverse'; 
-    setTimeout(() => enemySprite.style.animation = '', 300);
 
-    const damage = currentEnemy.attack + Math.floor(Math.random() * 5);
-    const finalDamage = Math.max(0, Math.floor(damage - player.defense));
-    player.hp -= finalDamage;
-    logMessage(`[ATAQUE] ${currentEnemy.name} ATACOU, CAUSANDO ${finalDamage} DE DANO!`);
+    // 2. Inimigos atacam
+    currentWave.forEach(attacker => {
+        if (attacker.hp > 0) {
+            if (attacker.isStunned) {
+                logMessage(`[ATRASO] ${attacker.name} está 🥶 CONGELADO e perdeu o turno!`);
+                attacker.isStunned = false; // Stun dura 1 turno
+                return;
+            }
 
-    triggerAnimation('hero-sprite', 'receiving-damage');
+            enemySprite.style.animation = 'attack-move 0.3s ease-in-out reverse'; 
+            setTimeout(() => enemySprite.style.animation = '', 300);
+
+            const damage = attacker.attack + Math.floor(Math.random() * 5);
+            const finalDamage = Math.max(0, Math.floor(damage - player.defense));
+            player.hp -= finalDamage;
+            logMessage(`[ATAQUE] ${attacker.name} ATACOU, CAUSANDO ${finalDamage} DE DANO!`);
+
+            triggerAnimation('hero-sprite', 'receiving-damage');
+        }
+    });
 
     updateStats();
     
@@ -507,41 +771,22 @@ function enemyTurn() {
     }
 }
 
-function victory() {
-    const isBoss = currentEnemy.isBoss;
-    const zonaVencida = ZONAS[zonaAtual].nome;
-
-    logMessage(isBoss ? 
-        `[VITÓRIA] CHEFE ${currentEnemy.name} DERROTADO!` : 
-        `[VITÓRIA] ${currentEnemy.name} DERROTADO!`);
+function victoryEnd() {
+    const isBoss = totalWaves > 0; // Se houveram ondas, provavelmente Boss era o objetivo
     
-    player.exp += currentEnemy.expReward;
-    player.gold += currentEnemy.goldReward;
-    logMessage(`[LOOT] +${currentEnemy.expReward} EXP, +${currentEnemy.goldReward} OURO.`);
+    logMessage(isBoss ? 
+        `[VITÓRIA] A ZONA FOI LIMPA! CHEFE DERROTADO!` : 
+        `[VITÓRIA] MONSTROS DERROTADOS!`);
     
     // CHANCE DE PEGAR CHAVE SECRETA (EASTER EGG)
-    if (isBoss && Math.random() < 0.10 && !player.secretKey && !isGodModeActive) { // 10% de chance, se for Boss, e só se não tiver a chave/cheat ativo
+    if (isBoss && Math.random() < 0.10 && !player.secretKey && !isGodModeActive) { 
          player.secretKey = true;
          logMessage(`[LOOT RARO] 🔑 VOCÊ ENCONTROU UMA CHAVE SECRETA! Guarde-a bem.`);
     }
 
-    if (Math.random() < (isBoss ? 0.6 : 0.3)) { // Chance de poção ajustada
-        player.potions++;
-        logMessage(`[LOOT] ENCONTROU 1 POÇÃO!`);
-    }
-
-    if (player.exp >= player.expToNextLvl) {
-        player.levelUp();
-    }
-    
-    if (isBoss && ZONAS[zonaAtual + 1]) {
-        logMessage(`[PROGRESSO] GUARDIÃO DA ZONA VENCIDO!`);
-    } else if (isBoss && !ZONAS[zonaAtual + 1]) {
-        logMessage("[FIM DE JOGO] PARABÉNS! JORNADA COMPLETA!");
-    }
-
-    currentEnemy = null;
-    updateStats(); 
+    currentWave = [];
+    totalWaves = 0;
+    waveIndex = 0;
     isAnimating = false;
     setTimeout(showMainMenu, 3000);
 }
@@ -553,23 +798,106 @@ function gameOver() {
     isAnimating = false;
 }
 
-// --- SISTEMA DE LOJA (MERCADOR) ---
+// --- SISTEMA DE LOJA (SKILL TREE) ---
 function openShop() {
-    changeScreen('shop'); // Vai para a tela da loja
+    changeScreen('shop'); 
     const potionPrice = 30 + (zonaAtual * 5);
     logMessage(`[MERCADOR] POÇÃO PEQUENA CUSTA ${potionPrice} OURO.`);
     
-    const buttons = `
-        <p>SEU OURO: <span id="player-gold-shop">${player.gold}</span></p>
+    // --- Skill Tree (Ativas) ---
+    let activeSkillButtons = '<h3>HABILIDADES ATIVAS (Equipáveis):</h3>';
+    const classActiveSkills = SKILLS.ACTIVE[player.class];
+    
+    for (const key in classActiveSkills) {
+        const skill = classActiveSkills[key];
+        const isUnlocked = player.unlockedActiveSkills[key];
+        const canBuy = player.skillPoints >= skill.custo && !isUnlocked;
+        
+        activeSkillButtons += `
+            <button onclick="buySkill('ACTIVE', '${key}', ${skill.custo})" ${!canBuy ? 'disabled' : ''} class="${isUnlocked ? 'btn-bought' : ''}">
+                ${isUnlocked ? '✅' : `(${skill.custo} SP)`} ${skill.nome} (CD: ${skill.custo}): ${skill.descricao}
+            </button>
+        `;
+    }
+
+    // --- Skill Tree (Passivas) ---
+    let passiveSkillButtons = '<h3>HABILIDADES PASSIVAS (Permanentes):</h3>';
+    
+    for (const key in SKILLS.PASSIVE) {
+        const skill = SKILLS.PASSIVE[key];
+        const isUnlocked = player.unlockedPassiveSkills[key];
+        const canBuy = player.skillPoints >= skill.custo && !isUnlocked;
+        
+        passiveSkillButtons += `
+            <button onclick="buySkill('PASSIVE', '${key}', ${skill.custo})" ${!canBuy ? 'disabled' : ''} class="${isUnlocked ? 'btn-bought' : ''}">
+                ${isUnlocked ? '✅' : `(${skill.custo} SP)`} ${skill.nome}: ${skill.descricao}
+            </button>
+        `;
+    }
+
+
+    const menu = `
+        <p>SEU OURO: <span id="player-gold-shop">${player.gold}</span> | SEUS PONTOS SP: <span id="player-sp-shop">${player.skillPoints}</span></p>
+        
+        <h3>MERCADOR (OURO)</h3>
+        <div class="shop-buttons-area">
+            <button onclick="buyItem('potion', ${potionPrice})">COMPRAR POÇÃO (${potionPrice} OURO)</button>
+        </div>
+
+        ${activeSkillButtons}
+        ${passiveSkillButtons}
+        
         <div class="shop-input-area">
             <input type="text" id="easter-egg-input" placeholder="Código secreto (opcional)">
             <button onclick="checkEasterEgg()">🔍 USAR CÓDIGO</button>
         </div>
-        <button onclick="buyItem('potion', ${potionPrice})">COMPRAR POÇÃO (${potionPrice} OURO)</button>
-        <button onclick="showMainMenu()">VOLTAR AO MENU</button>
+        
+        <button onclick="showMainMenu()" class="btn-return">VOLTAR AO MENU</button>
     `;
-    document.getElementById('shop-area').innerHTML = buttons;
+    document.getElementById('shop-area').innerHTML = menu;
     updateStats();
+}
+
+function buySkill(type, skillKey, cost) {
+    if (player.skillPoints >= cost) {
+        let skill;
+        let unlockedSkills;
+
+        if (type === 'ACTIVE') {
+            skill = SKILLS.ACTIVE[player.class][skillKey];
+            unlockedSkills = player.unlockedActiveSkills;
+        } else if (type === 'PASSIVE') {
+            skill = SKILLS.PASSIVE[skillKey];
+            unlockedSkills = player.unlockedPassiveSkills;
+        }
+
+        if (unlockedSkills && skill && !unlockedSkills[skillKey]) {
+            player.skillPoints -= cost;
+            unlockedSkills[skillKey] = skill;
+
+            // Efeitos permanentes de PASSIVAS
+            if (type === 'PASSIVE') {
+                if (skill.defBonus) player.defense += skill.defBonus;
+                if (skill.atkBonus) player.attack += skill.atkBonus;
+                if (skill.hpBonus) {
+                    player.hpMax += skill.hpBonus;
+                    player.hp += skill.hpBonus;
+                }
+                logMessage(`[SKILL PERMANENTE] Você aprimorou ${skill.nome}!`);
+            } else {
+                logMessage(`[SKILL] VOCÊ DESBLOQUEOU A ATIVA ${skill.nome}!`);
+            }
+            
+        } else if (unlockedSkills && skill && unlockedSkills[skillKey]) {
+            logMessage(`[ERRO] VOCÊ JÁ POSSUI ESSA HABILIDADE.`);
+        } else {
+            logMessage(`[ERRO] Tipo de habilidade inválido.`);
+        }
+    } else {
+        logMessage(`[ERRO] PONTOS SP INSUFICIENTES!`);
+    }
+    updateStats();
+    openShop();
 }
 
 function buyItem(item, price) {
@@ -581,24 +909,24 @@ function buyItem(item, price) {
         logMessage(`[ERRO] OURO INSUFICIENTE!`);
     }
     updateStats();
-    openShop(); // Recarrega o menu da loja
+    openShop(); 
 }
 
 // --- EASTER EGG ---
 function checkEasterEgg() {
     const code = document.getElementById('easter-egg-input').value.toUpperCase().trim();
-    document.getElementById('easter-egg-input').value = ""; // Limpa o campo
+    document.getElementById('easter-egg-input').value = ""; 
     
-    if (code === "GODMODE" && !isGodModeActive) { // Ativa apenas uma vez
+    if (code === "GODMODE" && !isGodModeActive) { 
         isGodModeActive = true;
-        player.hpMax += 700; // Buff ainda maior!
+        player.hpMax += 700; 
         player.hp = player.hpMax;
         player.attack += 150;
         player.defense += 80;
         player.gold += 5000;
         player.potions += 20;
+        player.secretKey = true; 
         logMessage(`[CHEAT ATIVADO] 🌟 O PODER DE "GODMODE" FOI CONCEDIDO!`);
-        logMessage(`Você se tornou invencível! (Quase...)`);
         updateStats();
     } else if (code === "GODMODE" && isGodModeActive) {
         logMessage(`[CHEAT] O código GODMODE já está ativo!`);
@@ -612,6 +940,5 @@ function checkEasterEgg() {
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
-    // Garante que o input de nome está visível na primeira tela
     changeScreen('initial');
 });
