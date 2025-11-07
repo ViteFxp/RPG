@@ -1,14 +1,14 @@
 // --- DADOS E VARIÁVEIS DO JOGO ---
 
 const ZONAS = [
-    { nome: "FLORESTA PROIBIDA", lvlMin: 1, inimigos: ["GOBLIN", "SLIME", "LOBO SELVAGEM"], boss: { nome: "REI GOBLIN", sprite: "👑" }, sprite: "🌳" },
-    { nome: "CAVERNAS SOMBRIAS", lvlMin: 5, inimigos: ["MORCEGO GIGANTE", "ARANHA VENENOSA", "ESQUELETO"], boss: { nome: "O ABOMINÁVEL", sprite: "💀" }, sprite: "⛰️" },
-    { nome: "RUÍNAS ESQUECIDAS", lvlMin: 10, inimigos: ["FANTASMA", "GOLEM DE PEDRA", "MÚMIA"], boss: { nome: "LICH ANTIGO", sprite: "👻" }, sprite: "🏛️" },
-    { nome: "MONTANHAS VULCÂNICAS", lvlMin: 15, inimigos: ["SALAMANDRA", "ELEMENTAR DE FOGO", "DRAGÃOZINHO"], boss: { nome: "DRAKE DE LAVA", sprite: "🐉" }, sprite: "🌋" },
-    { nome: "CASTELO DO CAOS", lvlMin: 20, inimigos: ["GUARDA NEGRO", "DEMÔNIO MENOR", "VAMPIRO"], boss: { nome: "O TIRANO SUPREMO", sprite: "😈" }, sprite: "🏰" }
+    { nome: "FLORESTA PROIBIDA", lvlMin: 1, inimigos: ["GOBLIN", "SLIME", "LOBO SELVAGEM"], boss: { nome: "REI GOBLIN", sprite: "👑" }, sprite: "🌳", exploresNeeded: 3 }, // 3 explorações para habilitar o Boss
+    { nome: "CAVERNAS SOMBRIAS", lvlMin: 5, inimigos: ["MORCEGO GIGANTE", "ARANHA VENENOSA", "ESQUELETO"], boss: { nome: "O ABOMINÁVEL", sprite: "💀" }, sprite: "⛰️", exploresNeeded: 4 },
+    { nome: "RUÍNAS ESQUECIDAS", lvlMin: 10, inimigos: ["FANTASMA", "GOLEM DE PEDRA", "MÚMIA"], boss: { nome: "LICH ANTIGO", sprite: "👻" }, sprite: "🏛️", exploresNeeded: 5 },
+    { nome: "MONTANHAS VULCÂNICAS", lvlMin: 15, inimigos: ["SALAMANDRA", "ELEMENTAR DE FOGO", "DRAGÃOZINHO"], boss: { nome: "DRAKE DE LAVA", sprite: "🐉" }, sprite: "🌋", exploresNeeded: 5 },
+    { nome: "CASTELO DO CAOS", lvlMin: 20, inimigos: ["GUARDA NEGRO", "DEMÔNIO MENOR", "VAMPIRO"], boss: { nome: "O TIRANO SUPREMO", sprite: "😈" }, sprite: "🏰", exploresNeeded: 6 }
 ];
 
-// --- SKILL TREE: Habilidades Ativas e Passivas (Nova Estrutura) ---
+// --- SKILL TREE: Habilidades Ativas e Passivas ---
 const SKILLS = {
     // ATIVAS (Equipáveis, usam o slot 'special')
     ACTIVE: {
@@ -50,14 +50,15 @@ let isAnimating = false;
 let zonaAtual = 0;
 let turnCount = 0; 
 let isGodModeActive = false; 
+let exploresCompleted = 0; // NOVO: Contador de explorações
 
-// --- NOVO SISTEMA DE ONDA E ALVOS ---
+// --- SISTEMA DE ONDA E ALVOS ---
 let currentWave = [];
 let waveIndex = 0;
 let totalWaves = 0;
 let currentTargetIndex = 0;
 
-// --- CLASSE JOGADOR (Modificado para Habilidades e Cooldown Dinâmico) ---
+// --- CLASSE JOGADOR (Adicionado exploresCompleted) ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -78,16 +79,21 @@ class Player {
         this.secretKey = false;
         
         // Habilidades
-        this.unlockedActiveSkills = {}; // { 'FURIA': skillObject }
-        this.unlockedPassiveSkills = {}; // { 'HEAVY_BLOW': skillObject }
-        this.equippedActiveSkill = SKILLS.ACTIVE[className]['FURIA'] || SKILLS.ACTIVE[className]['ARCANE_EXPLOSION'] || SKILLS.ACTIVE[className]['PRECISION_SHOT']; // Habilidade equipada (padrão)
+        this.unlockedActiveSkills = {}; 
+        this.unlockedPassiveSkills = {}; 
+        
+        const defaultSkill = SKILLS.ACTIVE[className]['FURIA'] || SKILLS.ACTIVE[className]['ARCANE_EXPLOSION'] || SKILLS.ACTIVE[className]['PRECISION_SHOT'];
+        this.equippedActiveSkill = defaultSkill;
+        
+        // Adiciona a habilidade padrão ao desbloqueio no início
+        this.unlockedActiveSkills[defaultSkill.id] = defaultSkill;
         
         // Cooldown
         this.lastSpecialTurn = -this.equippedActiveSkill.custo; 
         
         // Efeitos
-        this.enemyDots = {}; // Dano ao longo do tempo (DoT) no inimigo
-        this.isStunned = false; // Se o player está atordoado
+        this.enemyDots = {}; 
+        this.isStunned = false; 
     }
 
     levelUp() {
@@ -116,7 +122,7 @@ class Player {
     }
 }
 
-// --- CLASSE INIMIGO (Adicionado Efeitos de Status) ---
+// --- CLASSE INIMIGO ---
 class Enemy {
     constructor(lvl, isBoss = false) {
         const zona = ZONAS[zonaAtual];
@@ -155,8 +161,8 @@ class Enemy {
         
         // Efeitos de Status
         this.isStunned = false;
-        this.dotTurns = 0; // Dano ao longo do tempo (FOGO)
-        this.poisonTurns = 0; // Veneno (POISON)
+        this.dotTurns = 0; 
+        this.poisonTurns = 0; 
         this.dotDamage = 0;
         this.initialDefense = defBase;
     }
@@ -175,8 +181,7 @@ function changeScreen(screenId) {
     }
 }
 
-// --- FUNÇÕES DE INTERFACE (Atualizado para Inventário e Habilidade Equipada) ---
-
+// --- FUNÇÕES DE INTERFACE ---
 function updateStats() {
     if (!player) return;
 
@@ -191,25 +196,20 @@ function updateStats() {
 
     // --- Atualização do Status Box (Geral) ---
     const statsHtml = `
-        <p>ZONA: ${ZONAS[zonaAtual].sprite} ${ZONAS[zonaAtual].nome} | NÍVEL: ${player.lvl} (SP: ${player.skillPoints})</p>
-        <p>NOME: ${player.name} | CLASSE: ${player.class} | OURO: ${player.gold} | POÇÕES: ${player.potions}</p>
+        <p>ZONA: ${ZONAS[zonaAtual].sprite} ${ZONAS[zonaAtual].nome} | EXPLORAÇÕES: ${exploresCompleted}/${ZONAS[zonaAtual].exploresNeeded}</p>
+        <p>NOME: ${player.name} | NÍVEL: ${player.lvl} (SP: ${player.skillPoints}) | OURO: ${player.gold} | POÇÕES: ${player.potions}</p>
         <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense}</p>
         <p>HABILIDADE EQUIPADA: ${skill.nome} (${skill.custo} CD) ${cooldownStatus}</p>
-        <p>PASSIVAS: ${passiveSkillsList} | CHAVE: ${keyStatus}</p>
+        <p>PASSIVAS: ${passiveSkillsList} | CHAVE SECRETA: ${keyStatus}</p>
         <p>EXP: ${player.exp}/${player.expToNextLvl}</p>
     `;
     
     document.getElementById('player-stats').innerHTML = `<h2>STATUS GERAL</h2>${statsHtml}`;
     document.getElementById('player-stats-summary').innerHTML = statsHtml;
-    document.getElementById('player-gold-shop').textContent = player.gold;
-    document.getElementById('player-sp-shop').textContent = player.skillPoints;
     
-    // --- Atualização do HUD de Batalha (Onda e Alvo) ---
+    // Atualiza HUD de Batalha
     const heroHpPercent = (player.hp / player.hpMax) * 100;
     document.getElementById('hero-hp-bar').style.width = heroHpPercent + '%';
-    document.getElementById('hero-name-display').textContent = player.name;
-    document.getElementById('hero-sprite').textContent = player.sprite;
-    document.getElementById('player-lvl-hud').textContent = player.lvl;
     document.getElementById('player-hp-hud').textContent = Math.max(0, player.hp);
     document.getElementById('player-hp-max-hud').textContent = player.hpMax;
 
@@ -263,8 +263,7 @@ function triggerAnimation(targetElementId, animationClass) {
     }, 400); 
 }
 
-// --- FUNÇÕES DE INÍCIO E MENU PRINCIPAL ---
-
+// --- FUNÇÕES DE PROGRESSÃO E INÍCIO DE JOGO ---
 function showClassSelection() {
     const name = document.getElementById('name-input').value.trim();
     if (!name) {
@@ -283,11 +282,12 @@ function showClassSelection() {
 
 function startGame(name, className) {
     player = new Player(name, className);
-    // Adiciona a habilidade padrão ao desbloqueio
-    const defaultSkill = player.equippedActiveSkill;
-    player.unlockedActiveSkills[defaultSkill.id] = defaultSkill;
+    exploresCompleted = 0; // Reseta o contador para a primeira zona
     
+    document.getElementById('hero-name-display').textContent = player.name;
+    document.getElementById('hero-sprite').textContent = player.sprite;
     document.getElementById('battle-display').style.display = 'flex';
+    
     logMessage(`[INÍCIO] O ${className} ${name} INICIA A AVENTURA!`);
     updateStats();
     changeScreen('main'); 
@@ -301,69 +301,60 @@ function showMainMenu() {
     updateStats();
     
     const zona = ZONAS[zonaAtual];
-
     let advanceButton = "";
+    let bossButton = "";
+
+    // Botão de Avançar (só aparece se o nível for alto o suficiente)
     if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
         advanceButton = `<button onclick="advanceZone()" class="btn-advance">➡️ AVANÇAR PARA ${ZONAS[zonaAtual + 1].nome}</button>`;
+    }
+
+    // Botão de Boss (só aparece se as explorações necessárias forem completadas)
+    if (exploresCompleted >= zona.exploresNeeded) {
+        bossButton = `<button onclick="startWaves(true)" class="btn-boss-ready">2. DESAFIAR ${zona.boss.nome} (CHEFE) 😈</button>`;
+    } else {
+        bossButton = `<button disabled>2. DESAFIAR ${zona.boss.nome} (Precisa de ${zona.exploresNeeded - exploresCompleted} explorações)</button>`;
     }
 
     const buttons = `
         <p>AÇÃO NA ${zona.nome} ${zona.sprite}:</p>
         <button onclick="startWaves(false)">1. EXPLORAR (MONSTROS COMUNS)</button>
-        <button onclick="startWaves(true)">2. DESAFIAR ${zona.boss.nome} (CHEFE)</button>
+        ${bossButton}
+        <button onclick="inspectZone()">3. INSPECIONAR ZONA (BUSCAR SEGREDO)</button>
+        <button onclick="openShop()">4. CENTRO DE TREINAMENTO (SKILL TREE & EQUIPAR)</button>
         ${advanceButton}
-        <button onclick="inspectZone()">4. INSPECIONAR ZONA (BUSCAR SEGREDO)</button>
-        <button onclick="openShop()">5. LOJA E TREINAMENTO (SKILL TREE)</button>
-        <button onclick="openInventory()">6. INVENTÁRIO (EQUIPAR SKILL)</button>
     `;
     updateActions(buttons);
 }
 
-// --- FUNÇÕES DE INVENTÁRIO (Equipamento de Habilidade) ---
-function openInventory() {
-    changeScreen('inventory');
-    updateStats();
-    
-    const activeSkills = player.unlockedActiveSkills;
-    let skillListHtml = '<h3>HABILIDADES ATIVAS (Selecione 1 para equipar):</h3>';
-
-    for (const id in activeSkills) {
-        const skill = activeSkills[id];
-        const isEquipped = player.equippedActiveSkill.id === id;
-        
-        skillListHtml += `
-            <div class="inventory-item ${isEquipped ? 'equipped' : ''}">
-                <p><strong>${isEquipped ? '✅' : ''} ${skill.nome} (CD: ${skill.custo})</strong></p>
-                <p class="desc">${skill.descricao}</p>
-                <button onclick="equipSkill('${id}')" ${isEquipped ? 'disabled' : ''}>
-                    ${isEquipped ? 'EQUIPADO' : 'EQUIPAR'}
-                </button>
-            </div>
-        `;
+function advanceZone() {
+    if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
+        zonaAtual++;
+        exploresCompleted = 0; // Reseta o contador para a nova zona
+        logMessage(`[ZONA] VOCÊ ENTROU NA ${ZONAS[zonaAtual].nome}!`);
+        showMainMenu();
+    } else {
+        logMessage("[ZONA] NÍVEL INSUFICIENTE PARA AVANÇAR.");
+        showMainMenu();
     }
-    
-    const inventoryHtml = `
-        ${skillListHtml}
-        
-        <h3>POÇÕES: ${player.potions}</h3>
-        <p>Use a poção apenas durante a batalha.</p>
-        
-        <button onclick="showMainMenu()">VOLTAR AO MENU</button>
-    `;
-    document.getElementById('inventory-area').innerHTML = inventoryHtml;
 }
 
-function equipSkill(skillId) {
-    if (player.unlockedActiveSkills[skillId]) {
-        const newSkill = player.unlockedActiveSkills[skillId];
-        player.equippedActiveSkill = newSkill;
-        // Reseta o cooldown para o novo CD da skill
-        player.lastSpecialTurn = turnCount - newSkill.custo; 
-        logMessage(`[EQUIP] Habilidade Ativa: "${newSkill.nome}" equipada com sucesso!`);
-        openInventory(); 
+function inspectZone() {
+    logMessage(`[AÇÃO] VOCÊ PROCURA POR SINAIS E PISTAS na ${ZONAS[zonaAtual].nome}...`);
+    
+    if (player.secretKey && !isGodModeActive) {
+        player.secretKey = false; 
+        logMessage("🔑 Você usa a Chave Secreta em uma pedra marcada.");
+        logMessage(`[PISTA SECRETA] Uma inscrição aparece: "O modo dos Deuses foi um presente do... <span style='color:red'>...MODE</span>".`);
+        logMessage("A chave se desintegra. Você pode tentar o código no Centro de Treinamento.");
+    } else if (isGodModeActive) {
+        logMessage("[INSPEÇÃO] O local parece vazio. O poder já está com você.");
     } else {
-        logMessage("[ERRO] Habilidade não desbloqueada.");
+        logMessage("[INSPEÇÃO] Você encontra apenas terra e cascalho. Talvez outro item seja necessário.");
     }
+    
+    updateStats();
+    setTimeout(showMainMenu, 2000);
 }
 
 
@@ -392,7 +383,7 @@ function generateWave(isBoss, baseLvl) {
     currentTargetIndex = 0; 
     
     if (waveIndex >= totalWaves) {
-        victoryEnd();
+        victoryEnd(isBoss);
         return;
     }
 
@@ -435,6 +426,7 @@ function showBattleMenu() {
         let status = '';
         if (enemy.dotTurns > 0) status += '🔥';
         if (enemy.poisonTurns > 0) status += '☣️';
+        if (enemy.isStunned) status += '🥶';
         targetButtons += `<button onclick="setTarget(${index})" class="${isTarget ? 'btn-target-active' : 'btn-target'}">T${index + 1}: ${enemy.sprite} ${enemy.name} ${status} (${Math.max(0, enemy.hp)} HP)</button>`;
     });
 
@@ -542,7 +534,6 @@ function applyActiveSkillEffect(enemy, skill, baseDamage) {
     
     switch (skill.effect) {
         case 'default':
-            // Efeitos padrão (Fúria/Tiro Preciso)
             if (skill.id === 'FURIA' && Math.random() < 0.2) {
                  damage *= 2;
                  logMessage("[EFEITO] FÚRIA ATIVOU! DANO DOBRADO!");
@@ -553,45 +544,38 @@ function applyActiveSkillEffect(enemy, skill, baseDamage) {
             break;
             
         case 'temp_def_down':
-            // Explosão Arcana
             enemy.defense = Math.max(0, enemy.defense / 2);
             logMessage(`[EFEITO] DEFESA REDUZIDA temporariamente!`);
             break;
 
         case 'perm_def_down':
-            // Golpe de Escudo
             enemy.initialDefense = Math.max(0, enemy.initialDefense - 5);
             enemy.defense = enemy.initialDefense;
             logMessage(`[EFEITO] DEFESA REDUZIDA permanentemente em 5!`);
             break;
             
         case 'ignore_def':
-            // Investida (Dano é calculado ignorando DEF na playerAttack)
             logMessage("[EFEITO] DEFESA IGNORADA!");
             break;
             
         case 'dot':
-            // Bola de Fogo
-            enemy.dotTurns = 2; // Dura mais 2 turnos (total 3 com este)
-            enemy.dotDamage = player.attack * 0.2; // Dano baseado no ATK
+            enemy.dotTurns = 2; 
+            enemy.dotDamage = player.attack * 0.2; 
             logMessage(`[EFEITO] O alvo está pegando 🔥 FOGO!`);
             break;
 
         case 'poison':
-            // Flecha Envenenada
             enemy.poisonTurns = 3;
             enemy.dotDamage = player.attack * 0.15;
             logMessage(`[EFEITO] O alvo está ☣️ ENVENENADO!`);
             break;
             
         case 'stun':
-            // Congelamento
             enemy.isStunned = true;
             logMessage(`[EFEITO] O alvo está 🥶 CONGELADO e não atacará no próximo turno!`);
             break;
             
         case 'multi_target':
-            // Tiro Múltiplo (Ataca 3)
             let targetsHit = 0;
             const waveCopy = [...currentWave]; 
             // Ataque adicional nos inimigos restantes
@@ -619,7 +603,6 @@ function fastShotAttack(currentEnemy) {
     triggerAnimation('hero-sprite', 'attacking');
     
     let damage = player.attack + Math.floor(Math.random() * 8);
-    // Aplica passivas no ataque extra (exceto Tiro Rápido, claro)
     damage = applyPassiveEffects(damage); 
     
     const finalDamage = Math.max(0, Math.floor(damage - currentEnemy.defense));
@@ -671,7 +654,8 @@ function handleEnemyDefeat(defeatedEnemy) {
             logMessage(`[PROGRESSO] ONDA ${waveIndex} DE ${totalWaves} COMPLETA!`);
             setTimeout(() => generateWave(defeatedEnemy.isBoss, defeatedEnemy.lvl), 1500);
         } else {
-            victoryEnd();
+            // A batalha foi totalmente vencida
+            victoryEnd(defeatedEnemy.isBoss);
         }
     }
 }
@@ -698,6 +682,8 @@ function usePotion() {
 function applyDotEffects() {
     let anyDot = false;
     currentWave.forEach(enemy => {
+        if (enemy.hp <= 0) return; // Se já morreu por outro DOT, pula
+        
         if (enemy.dotTurns > 0) {
             const damage = Math.floor(enemy.dotDamage + Math.random() * 2);
             enemy.hp -= damage;
@@ -725,15 +711,10 @@ function applyDotEffects() {
 
 function enemyTurn() {
     if (player.hp <= 0) return gameOver();
-    if (currentWave.length === 0) {
-        isAnimating = false;
-        return;
-    }
     
     // 1. Aplica DOTs antes do ataque inimigo
     applyDotEffects();
     
-    // Se todos morreram pelos DOTs
     if (currentWave.length === 0) {
         isAnimating = false;
         return;
@@ -771,15 +752,19 @@ function enemyTurn() {
     }
 }
 
-function victoryEnd() {
-    const isBoss = totalWaves > 0; // Se houveram ondas, provavelmente Boss era o objetivo
-    
-    logMessage(isBoss ? 
+function victoryEnd(wasBossBattle) {
+    logMessage(wasBossBattle ? 
         `[VITÓRIA] A ZONA FOI LIMPA! CHEFE DERROTADO!` : 
         `[VITÓRIA] MONSTROS DERROTADOS!`);
     
+    // Se foi uma exploração normal, aumenta o contador
+    if (!wasBossBattle) {
+        exploresCompleted++;
+        logMessage(`[PROGRESSO] Explorações completadas: ${exploresCompleted}/${ZONAS[zonaAtual].exploresNeeded}`);
+    }
+    
     // CHANCE DE PEGAR CHAVE SECRETA (EASTER EGG)
-    if (isBoss && Math.random() < 0.10 && !player.secretKey && !isGodModeActive) { 
+    if (wasBossBattle && Math.random() < 0.10 && !player.secretKey && !isGodModeActive) { 
          player.secretKey = true;
          logMessage(`[LOOT RARO] 🔑 VOCÊ ENCONTROU UMA CHAVE SECRETA! Guarde-a bem.`);
     }
@@ -798,30 +783,35 @@ function gameOver() {
     isAnimating = false;
 }
 
-// --- SISTEMA DE LOJA (SKILL TREE) ---
+// --- SISTEMA DE CENTRO DE TREINAMENTO (LOJA/SKILL TREE/EQUIPAMENTO) ---
 function openShop() {
     changeScreen('shop'); 
     const potionPrice = 30 + (zonaAtual * 5);
-    logMessage(`[MERCADOR] POÇÃO PEQUENA CUSTA ${potionPrice} OURO.`);
     
-    // --- Skill Tree (Ativas) ---
-    let activeSkillButtons = '<h3>HABILIDADES ATIVAS (Equipáveis):</h3>';
+    // --- SKILLS ATIVAS E EQUIPAMENTO ---
+    let activeSkillButtons = '<h3>HABILIDADES ATIVAS (Equipar):</h3>';
     const classActiveSkills = SKILLS.ACTIVE[player.class];
     
     for (const key in classActiveSkills) {
         const skill = classActiveSkills[key];
         const isUnlocked = player.unlockedActiveSkills[key];
+        const isEquipped = player.equippedActiveSkill.id === key;
         const canBuy = player.skillPoints >= skill.custo && !isUnlocked;
         
         activeSkillButtons += `
-            <button onclick="buySkill('ACTIVE', '${key}', ${skill.custo})" ${!canBuy ? 'disabled' : ''} class="${isUnlocked ? 'btn-bought' : ''}">
-                ${isUnlocked ? '✅' : `(${skill.custo} SP)`} ${skill.nome} (CD: ${skill.custo}): ${skill.descricao}
-            </button>
+            <div class="skill-item ${isEquipped ? 'equipped' : ''}">
+                <p><strong>${isEquipped ? '✅' : (isUnlocked ? '🌟' : '🔒')} ${skill.nome} (CD: ${skill.custo})</strong></p>
+                <p class="desc">${skill.descricao}</p>
+                ${isUnlocked ? 
+                    `<button onclick="equipSkill('${key}')" ${isEquipped ? 'disabled' : ''}>${isEquipped ? 'EQUIPADO' : 'EQUIPAR'}</button>` :
+                    `<button onclick="buySkill('ACTIVE', '${key}', ${skill.custo})" ${!canBuy ? 'disabled' : ''}>COMPRAR (${skill.custo} SP)</button>`
+                }
+            </div>
         `;
     }
 
-    // --- Skill Tree (Passivas) ---
-    let passiveSkillButtons = '<h3>HABILIDADES PASSIVAS (Permanentes):</h3>';
+    // --- SKILLS PASSIVAS ---
+    let passiveSkillButtons = '<h3>HABILIDADES PASSIVAS (Permanentes - SP):</h3>';
     
     for (const key in SKILLS.PASSIVE) {
         const skill = SKILLS.PASSIVE[key];
@@ -837,15 +827,19 @@ function openShop() {
 
 
     const menu = `
-        <p>SEU OURO: <span id="player-gold-shop">${player.gold}</span> | SEUS PONTOS SP: <span id="player-sp-shop">${player.skillPoints}</span></p>
+        <p>SEU OURO: <span id="player-gold-shop">${player.gold}</span> | SEUS PONTOS SP: <span id="player-sp-shop">${player.skillPoints}</span> | POÇÕES: ${player.potions}</p>
         
-        <h3>MERCADOR (OURO)</h3>
-        <div class="shop-buttons-area">
-            <button onclick="buyItem('potion', ${potionPrice})">COMPRAR POÇÃO (${potionPrice} OURO)</button>
+        <div class="shop-group">
+            <h3>MERCADOR (OURO)</h3>
+            <div class="shop-buttons-area">
+                <button onclick="buyItem('potion', ${potionPrice})">COMPRAR POÇÃO (${potionPrice} OURO)</button>
+            </div>
         </div>
-
-        ${activeSkillButtons}
-        ${passiveSkillButtons}
+        
+        <div class="shop-group skill-tree-area">
+            ${activeSkillButtons}
+            ${passiveSkillButtons}
+        </div>
         
         <div class="shop-input-area">
             <input type="text" id="easter-egg-input" placeholder="Código secreto (opcional)">
@@ -858,7 +852,21 @@ function openShop() {
     updateStats();
 }
 
+function equipSkill(skillId) {
+    if (player.unlockedActiveSkills[skillId]) {
+        const newSkill = player.unlockedActiveSkills[skillId];
+        player.equippedActiveSkill = newSkill;
+        // Reseta o cooldown para o novo CD da skill (opcional: manter CD)
+        player.lastSpecialTurn = turnCount - newSkill.custo; 
+        logMessage(`[EQUIP] Habilidade Ativa: "${newSkill.nome}" equipada com sucesso!`);
+        openShop(); // Recarrega o menu
+    } else {
+        logMessage("[ERRO] Habilidade não desbloqueada.");
+    }
+}
+
 function buySkill(type, skillKey, cost) {
+    // Lógica de compra (mantida)
     if (player.skillPoints >= cost) {
         let skill;
         let unlockedSkills;
@@ -912,7 +920,6 @@ function buyItem(item, price) {
     openShop(); 
 }
 
-// --- EASTER EGG ---
 function checkEasterEgg() {
     const code = document.getElementById('easter-egg-input').value.toUpperCase().trim();
     document.getElementById('easter-egg-input').value = ""; 
