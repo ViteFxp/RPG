@@ -10,19 +10,20 @@ const ZONAS = [
 
 // --- BALANCEAMENTO DE CLASSE ---
 const BASE_STATS = {
-    'GUERREIRO': { hp: 160, atk: 21, def: 12, sprite: '🛡️' }, // Mais HP e DEF
-    'MAGO': { hp: 110, atk: 26, def: 6, sprite: '🔮' },       // Alto ATK, baixa DEF
-    'ARQUEIRO': { hp: 120, atk: 23, def: 8, sprite: '🏹' }     // Equilibrado
+    'GUERREIRO': { hp: 160, atk: 21, def: 12, sprite: '🛡️' }, 
+    'MAGO': { hp: 110, atk: 26, def: 6, sprite: '🔮' },       
+    'ARQUEIRO': { hp: 120, atk: 23, def: 8, sprite: '🏹' }     
 };
 
 let player;
 let currentEnemy;
 let isAnimating = false;
 let zonaAtual = 0;
-let turnCount = 0; // Novo: Contador de turnos para o cooldown
-const SPECIAL_COOLDOWN = 3; // Cooldown de 3 turnos
+let turnCount = 0; 
+const SPECIAL_COOLDOWN = 3; 
+let isGodModeActive = false; // Flag para o Easter Egg
 
-// --- CLASSE JOGADOR e INIMIGO (Modificadas) ---
+// --- CLASSE JOGADOR (Adicionado item Chave Secreta) ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -39,15 +40,16 @@ class Player {
         this.potions = 2;
         this.sprite = stats.sprite;
         this.statPoints = 0;
-        this.lastSpecialTurn = -SPECIAL_COOLDOWN; // Inicializa para poder usar na primeira rodada
+        this.lastSpecialTurn = -SPECIAL_COOLDOWN; 
+        this.secretKey = false; // Inventário da Chave Secreta
     }
 
     levelUp() {
         this.lvl++;
         this.exp -= this.expToNextLvl;
         this.expToNextLvl = Math.floor(this.expToNextLvl * 1.5);
-        this.statPoints += 6; // Balanceamento: +6 pontos por nível
-        this.hpMax += 12; 
+        this.statPoints += 6; 
+        this.hpMax += 15; // Aumento de HP no level up ligeiramente maior.
         this.hp = this.hpMax;
         logMessage(`[LVL UP] VOCÊ ALCANÇOU O NÍVEL ${this.lvl}! PONTOS GANHOS.`);
         
@@ -57,21 +59,28 @@ class Player {
     }
 }
 
+// --- CLASSE INIMIGO (Balanceamento Aprimorado) ---
 class Enemy {
     constructor(lvl, isBoss = false) {
         const zona = ZONAS[zonaAtual];
-        let name, hpBase, atkBase, sprite;
+        let name, hpBase, atkBase, defBase, sprite;
 
-        // --- BALANCEAMENTO DE INIMIGO ---
+        // Progressão de atributos ajustada (escalonamento mais linear e recompensador)
+        const hpMultiplier = isBoss ? 45 : 25;
+        const atkMultiplier = isBoss ? 10 : 6;
+        const defMultiplier = isBoss ? 5 : 3;
+
         if (isBoss) {
             name = zona.boss.nome;
-            hpBase = 70 + (lvl * 35); // Bosses mais fortes
-            atkBase = 18 + (lvl * 9); 
+            hpBase = 100 + (lvl * hpMultiplier); 
+            atkBase = 20 + (lvl * atkMultiplier); 
+            defBase = 8 + (lvl * defMultiplier);
             sprite = zona.boss.sprite;
         } else {
             name = zona.inimigos[Math.floor(Math.random() * zona.inimigos.length)];
-            hpBase = 35 + (lvl * 20); // Inimigos mais robustos
-            atkBase = 12 + (lvl * 5);
+            hpBase = 50 + (lvl * hpMultiplier); 
+            atkBase = 15 + (lvl * atkMultiplier);
+            defBase = 5 + (lvl * defMultiplier);
             sprite = '👹';
         }
 
@@ -79,16 +88,17 @@ class Enemy {
         this.lvl = lvl;
         this.hp = hpBase;
         this.attack = atkBase;
-        this.defense = 4 + lvl; 
-        this.expReward = (isBoss ? 250 : 75) + (lvl * (isBoss ? 50 : 25)); // Recompensas de EXP e Gold ajustadas
-        this.goldReward = Math.floor(Math.random() * (isBoss ? 60 : 20) * lvl) + 15;
+        this.defense = defBase;
+        // Recompensa de EXP/Gold ajustada
+        this.expReward = Math.floor(lvl * (isBoss ? 50 : 25)) + (isBoss ? 200 : 50); 
+        this.goldReward = Math.floor(Math.random() * (isBoss ? 70 : 25) * lvl) + 20;
         this.isBoss = isBoss;
         this.sprite = sprite;
         this.initialHp = hpBase;
     }
 }
 
-// --- GERENCIAMENTO DE TELAS (Mantidas) ---
+// --- GERENCIAMENTO DE TELAS ---
 
 function changeScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
@@ -102,7 +112,7 @@ function changeScreen(screenId) {
     }
 }
 
-// --- FUNÇÕES DE INTERFACE (Modificada para mostrar cooldown) ---
+// --- FUNÇÕES DE INTERFACE (Modificada para mostrar Cooldown e Chave Secreta) ---
 
 function updateStats() {
     if (!player) return;
@@ -111,11 +121,15 @@ function updateStats() {
     const turnsRemaining = Math.max(0, SPECIAL_COOLDOWN - (turnCount - player.lastSpecialTurn));
     const cooldownStatus = turnsRemaining > 0 ? `(CD: ${turnsRemaining})` : `(PRONTO!)`;
     
+    // Status da Chave Secreta
+    const keyStatus = player.secretKey ? '🔑 (POSSUI)' : '(NÃO)';
+
     // --- Atualização do Status Box (Geral) ---
     const statsHtml = `
         <p>ZONA: ${ZONAS[zonaAtual].sprite} ${ZONAS[zonaAtual].nome} | NÍVEL: ${player.lvl} (PONTOS: ${player.statPoints})</p>
         <p>NOME: ${player.name} | CLASSE: ${player.class} | OURO: ${player.gold} | POÇÕES: ${player.potions}</p>
-        <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense} | EXP: ${player.exp}/${player.expToNextLvl} | SKILL: ${cooldownStatus}</p>
+        <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense} | SKILL: ${cooldownStatus} | CHAVE SECRETA: ${keyStatus}</p>
+        <p>EXP: ${player.exp}/${player.expToNextLvl}</p>
     `;
     
     // Atualiza o painel geral
@@ -267,10 +281,32 @@ function showMainMenu() {
         <button onclick="hunt(false)">1. EXPLORAR (MONSTRO COMUM)</button>
         <button onclick="hunt(true)">2. DESAFIAR ${zona.boss.nome} (BOSS)</button>
         ${advanceButton}
-        <button onclick="openShop()">3. VISITAR O MERCADOR</button>
+        <button onclick="inspectZone()">4. INSPECIONAR ZONA (BUSCAR SEGREDO)</button>
+        <button onclick="openShop()">5. VISITAR O MERCADOR</button>
     `;
     updateActions(buttons);
 }
+
+function inspectZone() {
+    logMessage(`[AÇÃO] VOCÊ PROCURA POR SINAIS E PISTAS na ${ZONAS[zonaAtual].nome}...`);
+    
+    // Se a chave for encontrada e o Easter Egg ainda não tiver sido ativado
+    if (player.secretKey && !isGodModeActive) {
+        player.secretKey = false; // A chave é consumida/usada para revelar a pista
+        logMessage("🔑 Você usa a Chave Secreta em uma pedra marcada.");
+        // Pista: O código é o nome do criador do modo mais apelão dos jogos.
+        logMessage(`[PISTA SECRETA] Uma inscrição aparece na pedra: "O modo dos Deuses foi um presente do... <span style='color:red'>...MODE</span>".`);
+        logMessage("A chave se desintegra. Você pode tentar o código na loja.");
+    } else if (isGodModeActive) {
+        logMessage("[INSPEÇÃO] O local parece vazio. O poder já está com você.");
+    } else {
+        logMessage("[INSPEÇÃO] Você encontra apenas terra e cascalho. Talvez outro item seja necessário.");
+    }
+    
+    updateStats();
+    setTimeout(showMainMenu, 2000);
+}
+
 
 function advanceZone() {
     if (ZONAS[zonaAtual + 1] && player.lvl >= ZONAS[zonaAtual + 1].lvlMin) {
@@ -390,7 +426,7 @@ function playerAttack(type) {
             damage = player.attack * 2 + Math.floor(Math.random() * 10); // Dano muito alto
             const oldDef = currentEnemy.defense;
             currentEnemy.defense = Math.max(0, currentEnemy.defense / 2); // Reduz DEF pela metade (efeito de 1 turno)
-            msg = `[HABILIDADE] MAGO LANÇA EXPLOSÃO ARCANA! DEFESA REDUZIDA (${oldDef} -> ${currentEnemy.defense.toFixed(1)})`;
+            msg = `[HABILIDADE] MAGO LANÇA EXPLOSÃO ARCANA! DEFESA REDUZIDA (${oldDef.toFixed(1)} -> ${currentEnemy.defense.toFixed(1)})`;
         }
         
         if (player.class === 'ARQUEIRO') { 
@@ -414,7 +450,7 @@ function playerAttack(type) {
     if (player.class === 'MAGO' && type === 'special') {
          // Cria um novo inimigo temporário para obter a defesa base do nível
          currentEnemy.defense = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).defense; 
-         logMessage(`[EFEITO] DEFESA do inimigo voltou ao normal: ${currentEnemy.defense}`);
+         logMessage(`[EFEITO] DEFESA do inimigo voltou ao normal: ${currentEnemy.defense.toFixed(1)}`);
     }
 
     triggerAnimation('enemy-sprite', 'receiving-damage'); 
@@ -433,7 +469,7 @@ function usePotion() {
     isAnimating = true;
 
     if (player.potions > 0) {
-        const heal = Math.floor(player.hpMax * 0.35) + 30; // Balanceamento: Cura um pouco maior
+        const heal = Math.floor(player.hpMax * 0.35) + 30; // Cura um pouco maior
         player.hp = Math.min(player.hpMax, player.hp + heal);
         player.potions--;
         logMessage(`[CURA] VOCÊ USOU POÇÃO E RECUPEROU ${heal} HP.`);
@@ -451,6 +487,7 @@ function enemyTurn() {
     if (player.hp <= 0) return gameOver();
 
     const enemySprite = document.getElementById('enemy-sprite');
+    // Animação de ataque do inimigo
     enemySprite.style.animation = 'attack-move 0.3s ease-in-out reverse'; 
     setTimeout(() => enemySprite.style.animation = '', 300);
 
@@ -482,7 +519,13 @@ function victory() {
     player.gold += currentEnemy.goldReward;
     logMessage(`[LOOT] +${currentEnemy.expReward} EXP, +${currentEnemy.goldReward} OURO.`);
     
-    if (Math.random() < (isBoss ? 0.7 : 0.4)) {
+    // CHANCE DE PEGAR CHAVE SECRETA (EASTER EGG)
+    if (isBoss && Math.random() < 0.10 && !player.secretKey && !isGodModeActive) { // 10% de chance, se for Boss, e só se não tiver a chave/cheat ativo
+         player.secretKey = true;
+         logMessage(`[LOOT RARO] 🔑 VOCÊ ENCONTROU UMA CHAVE SECRETA! Guarde-a bem.`);
+    }
+
+    if (Math.random() < (isBoss ? 0.6 : 0.3)) { // Chance de poção ajustada
         player.potions++;
         logMessage(`[LOOT] ENCONTROU 1 POÇÃO!`);
     }
@@ -546,27 +589,28 @@ function checkEasterEgg() {
     const code = document.getElementById('easter-egg-input').value.toUpperCase().trim();
     document.getElementById('easter-egg-input').value = ""; // Limpa o campo
     
-    if (code === "GODMODE") {
-        player.hpMax += 500;
+    if (code === "GODMODE" && !isGodModeActive) { // Ativa apenas uma vez
+        isGodModeActive = true;
+        player.hpMax += 700; // Buff ainda maior!
         player.hp = player.hpMax;
-        player.attack += 100;
-        player.defense += 50;
-        player.gold += 1000;
-        player.potions += 10;
+        player.attack += 150;
+        player.defense += 80;
+        player.gold += 5000;
+        player.potions += 20;
         logMessage(`[CHEAT ATIVADO] 🌟 O PODER DE "GODMODE" FOI CONCEDIDO!`);
-        logMessage(`HP, ATK, DEF, OURO e POÇÕES AUMENTADOS BRUTALMENTE!`);
+        logMessage(`Você se tornou invencível! (Quase...)`);
         updateStats();
-    } else if (code === "MERCADOR") {
-        logMessage(`[MERCADOR] Você tentou um código, mas não era esse! 😉`);
+    } else if (code === "GODMODE" && isGodModeActive) {
+        logMessage(`[CHEAT] O código GODMODE já está ativo!`);
     } else if (code.length > 0) {
-        logMessage(`[CÓDIGO] "${code}" não é válido.`);
+        logMessage(`[CÓDIGO] "${code}" não é válido. Tente procurar por pistas na Zona.`);
     } else {
          logMessage(`[CÓDIGO] O campo estava vazio.`);
     }
     openShop();
 }
 
-// --- INICIALIZAÇÃO (Manter para garantir que o input de nome esteja pronto) ---
+// --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
     // Garante que o input de nome está visível na primeira tela
     changeScreen('initial');
