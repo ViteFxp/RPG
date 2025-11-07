@@ -50,7 +50,7 @@ let isAnimating = false;
 let zonaAtual = 0;
 let turnCount = 0; 
 let isGodModeActive = false; 
-let exploresCompleted = 0; // NOVO: Contador de explorações
+let exploresCompleted = 0; // Contador de explorações
 
 // --- SISTEMA DE ONDA E ALVOS ---
 let currentWave = [];
@@ -58,7 +58,7 @@ let waveIndex = 0;
 let totalWaves = 0;
 let currentTargetIndex = 0;
 
-// --- CLASSE JOGADOR (Adicionado exploresCompleted) ---
+// --- CLASSE JOGADOR ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -168,7 +168,8 @@ class Enemy {
     }
 }
 
-// --- GERENCIAMENTO DE TELAS ---
+// --- GERENCIAMENTO DE TELAS E UI ---
+
 function changeScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
     screens.forEach(screen => {
@@ -181,7 +182,6 @@ function changeScreen(screenId) {
     }
 }
 
-// --- FUNÇÕES DE INTERFACE ---
 function updateStats() {
     if (!player) return;
 
@@ -250,7 +250,10 @@ function updateActions(buttonsHtml) {
 
 function logMessage(message) {
     const logBox = document.getElementById('log-box');
-    logBox.innerHTML += `<p>${message}</p>`;
+    // Adiciona a nova mensagem ao topo
+    // logBox.innerHTML = `<p>${message}</p>` + logBox.innerHTML;
+    // Mantendo a mensagem no final para melhor leitura do log de combate
+    logBox.innerHTML += `<p>${message}</p>`; 
     logBox.scrollTop = logBox.scrollHeight;
 }
 
@@ -263,14 +266,19 @@ function triggerAnimation(targetElementId, animationClass) {
     }, 400); 
 }
 
-// --- FUNÇÕES DE PROGRESSÃO E INÍCIO DE JOGO ---
+// --- FUNÇÕES DE INÍCIO E PROGRESSÃO ---
+
 function showClassSelection() {
-    const name = document.getElementById('name-input').value.trim();
+    // 1. Captura o nome digitado e remove espaços extras
+    const name = document.getElementById('name-input').value.trim(); 
+    
+    // 2. VERIFICAÇÃO CRÍTICA: Se o nome estiver vazio, retorna erro.
     if (!name) {
         logMessage("[ERRO] DIGITE SEU NOME PARA CONTINUAR.");
         return;
     }
     
+    // 3. Atualiza a área inicial com as opções de classe
     const initialArea = document.getElementById('initial-area');
     initialArea.innerHTML = `
         <p class="ascii-font">ESCOLHA SUA CLASSE, ${name}:</p>
@@ -282,10 +290,11 @@ function showClassSelection() {
 
 function startGame(name, className) {
     player = new Player(name, className);
-    exploresCompleted = 0; // Reseta o contador para a primeira zona
+    exploresCompleted = 0;
     
     document.getElementById('hero-name-display').textContent = player.name;
     document.getElementById('hero-sprite').textContent = player.sprite;
+    document.getElementById('player-lvl-hud').textContent = player.lvl;
     document.getElementById('battle-display').style.display = 'flex';
     
     logMessage(`[INÍCIO] O ${className} ${name} INICIA A AVENTURA!`);
@@ -313,7 +322,7 @@ function showMainMenu() {
     if (exploresCompleted >= zona.exploresNeeded) {
         bossButton = `<button onclick="startWaves(true)" class="btn-boss-ready">2. DESAFIAR ${zona.boss.nome} (CHEFE) 😈</button>`;
     } else {
-        bossButton = `<button disabled>2. DESAFIAR ${zona.boss.nome} (Precisa de ${zona.exploresNeeded - exploresCompleted} explorações)</button>`;
+        bossButton = `<button disabled>2. DESAFIAR ${zona.boss.nome} (Faltam ${zona.exploresNeeded - exploresCompleted} explorações)</button>`;
     }
 
     const buttons = `
@@ -357,7 +366,6 @@ function inspectZone() {
     setTimeout(showMainMenu, 2000);
 }
 
-
 // --- FUNÇÕES DE ONDAS E COMBATE ---
 
 function startWaves(isBoss) {
@@ -371,6 +379,8 @@ function startWaves(isBoss) {
     const zona = ZONAS[zonaAtual];
     const baseLvl = zona.lvlMin + Math.floor(Math.random() * 3);
     
+    // Se for chefe, são sempre 3 ondas (incluindo o chefe na última)
+    // Se for exploração normal, são 1 ou 2 ondas
     totalWaves = isBoss ? 3 : (Math.random() < 0.5 ? 2 : 1); 
     
     logMessage(`[BATALHA] ENCONTRADO ${totalWaves} ONDA(S) DE INIMIGOS!`);
@@ -483,14 +493,14 @@ function playerAttack(type) {
         damage = applyActiveSkillEffect(currentEnemy, skill, damage);
     }
     
+    // Calculo de Dano
     const finalDamage = Math.max(0, Math.floor(damage - (currentEnemy.isBoss && type === 'special' && player.equippedActiveSkill.effect === 'ignore_def' ? 0 : currentEnemy.defense)));
     currentEnemy.hp -= finalDamage;
     logMessage(`[DANO] CAUSOU ${finalDamage} DE DANO ao ${currentEnemy.name}!`);
     
-    // Reverte a DEF temporária (se for o caso)
+    // Reverte a DEF temporária (se for o caso da Explosão Arcana)
     if (type === 'special' && player.equippedActiveSkill.effect === 'temp_def_down') {
-         currentEnemy.defense = currentEnemy.initialDefense;
-         logMessage(`[EFEITO] DEFESA do inimigo voltou ao normal: ${currentEnemy.defense.toFixed(1)}`);
+         // Não reverte aqui, o DOT faz isso na função enemyTurn
     }
 
     triggerAnimation('enemy-sprite', 'receiving-damage'); 
@@ -545,6 +555,8 @@ function applyActiveSkillEffect(enemy, skill, baseDamage) {
             
         case 'temp_def_down':
             enemy.defense = Math.max(0, enemy.defense / 2);
+            // Armazena a mudança de defesa para reverter no DOT
+            enemy.tempDefDown = true;
             logMessage(`[EFEITO] DEFESA REDUZIDA temporariamente!`);
             break;
 
@@ -577,14 +589,20 @@ function applyActiveSkillEffect(enemy, skill, baseDamage) {
             
         case 'multi_target':
             let targetsHit = 0;
+            // Cria uma cópia da wave para evitar problemas de índice ao remover
             const waveCopy = [...currentWave]; 
-            // Ataque adicional nos inimigos restantes
-            for (let i = 0; i < waveCopy.length && targetsHit < 3; i++) {
-                if (waveCopy[i].id !== enemy.id) { // Não ataca o alvo principal novamente
+            // O alvo principal já foi atacado. Ataque adicional em mais 2.
+            for (let i = 0; i < waveCopy.length && targetsHit < 2; i++) {
+                if (waveCopy[i].id !== enemy.id) { 
                     const extraDamage = Math.max(0, Math.floor(player.attack * 0.5 - waveCopy[i].defense));
                     waveCopy[i].hp -= extraDamage;
                     logMessage(`[DANO MÚLTIPLO] T${currentWave.indexOf(waveCopy[i]) + 1} recebeu ${extraDamage} de DANO!`);
                     targetsHit++;
+                    
+                    if (waveCopy[i].hp <= 0) {
+                        logMessage(`[DERROTA] ${waveCopy[i].name} (T${currentWave.indexOf(waveCopy[i]) + 1}) FOI ELIMINADO pelo ataque múltiplo!`);
+                        handleEnemyDefeat(waveCopy[i]);
+                    }
                 }
             }
             break;
@@ -640,21 +658,20 @@ function handleEnemyDefeat(defeatedEnemy) {
         player.levelUp();
     }
     
-    // Atualiza o alvo
+    // Atualiza o alvo para o próximo inimigo restante
     if (currentTargetIndex >= currentWave.length) {
         currentTargetIndex = Math.max(0, currentWave.length - 1);
     }
 
     if (currentWave.length > 0) {
         updateStats();
-        setTimeout(enemyTurn, 800);
+        // Não chama enemyTurn imediatamente, é chamado após o ataque normal/fastshot
     } else {
         waveIndex++;
         if (waveIndex < totalWaves) {
             logMessage(`[PROGRESSO] ONDA ${waveIndex} DE ${totalWaves} COMPLETA!`);
             setTimeout(() => generateWave(defeatedEnemy.isBoss, defeatedEnemy.lvl), 1500);
         } else {
-            // A batalha foi totalmente vencida
             victoryEnd(defeatedEnemy.isBoss);
         }
     }
@@ -682,8 +699,9 @@ function usePotion() {
 function applyDotEffects() {
     let anyDot = false;
     currentWave.forEach(enemy => {
-        if (enemy.hp <= 0) return; // Se já morreu por outro DOT, pula
+        if (enemy.hp <= 0) return; 
         
+        // Aplica DANO DE FOGO (DOT)
         if (enemy.dotTurns > 0) {
             const damage = Math.floor(enemy.dotDamage + Math.random() * 2);
             enemy.hp -= damage;
@@ -691,12 +709,21 @@ function applyDotEffects() {
             logMessage(`[DOT 🔥] ${enemy.name} recebeu ${damage} de DANO de FOGO. (Restam ${enemy.dotTurns}T)`);
             anyDot = true;
         }
+        
+        // Aplica DANO DE VENENO (POISON)
         if (enemy.poisonTurns > 0) {
             const damage = Math.floor(enemy.dotDamage + Math.random() * 1);
             enemy.hp -= damage;
             enemy.poisonTurns--;
             logMessage(`[DOT ☣️] ${enemy.name} recebeu ${damage} de DANO de VENENO. (Restam ${enemy.poisonTurns}T)`);
             anyDot = true;
+        }
+        
+        // Reverte DEF temporária (Explosão Arcana)
+        if (enemy.tempDefDown) {
+            enemy.defense = enemy.initialDefense;
+            enemy.tempDefDown = false;
+            logMessage(`[EFEITO] DEFESA do inimigo voltou ao normal: ${enemy.defense.toFixed(1)}`);
         }
         
         // Verifica se o inimigo morreu pelo DOT
@@ -712,7 +739,7 @@ function applyDotEffects() {
 function enemyTurn() {
     if (player.hp <= 0) return gameOver();
     
-    // 1. Aplica DOTs antes do ataque inimigo
+    // 1. Aplica DOTs e reverte DEF antes do ataque inimigo
     applyDotEffects();
     
     if (currentWave.length === 0) {
@@ -783,13 +810,33 @@ function gameOver() {
     isAnimating = false;
 }
 
+function attemptToFlee() {
+    if (isAnimating) return;
+    isAnimating = true;
+
+    if (Math.random() < 0.5) { // 50% de chance de fugir
+        logMessage("[FUGA] VOCÊ CONSEGUE ESCAPAR DA BATALHA!");
+        currentWave = [];
+        totalWaves = 0;
+        waveIndex = 0;
+        isAnimating = false;
+        setTimeout(showMainMenu, 1500);
+    } else {
+        logMessage("[FUGA] FALHA NA FUGA! O INIMIGO TE CERCA.");
+        isAnimating = false;
+        turnCount++;
+        setTimeout(enemyTurn, 800);
+    }
+}
+
+
 // --- SISTEMA DE CENTRO DE TREINAMENTO (LOJA/SKILL TREE/EQUIPAMENTO) ---
 function openShop() {
     changeScreen('shop'); 
     const potionPrice = 30 + (zonaAtual * 5);
     
     // --- SKILLS ATIVAS E EQUIPAMENTO ---
-    let activeSkillButtons = '<h3>HABILIDADES ATIVAS (Equipar):</h3>';
+    let activeSkillButtons = '<h3>HABILIDADES ATIVAS (Equipar - 1 por vez):</h3>';
     const classActiveSkills = SKILLS.ACTIVE[player.class];
     
     for (const key in classActiveSkills) {
@@ -856,17 +903,16 @@ function equipSkill(skillId) {
     if (player.unlockedActiveSkills[skillId]) {
         const newSkill = player.unlockedActiveSkills[skillId];
         player.equippedActiveSkill = newSkill;
-        // Reseta o cooldown para o novo CD da skill (opcional: manter CD)
+        // Reseta o cooldown para o novo CD da skill
         player.lastSpecialTurn = turnCount - newSkill.custo; 
         logMessage(`[EQUIP] Habilidade Ativa: "${newSkill.nome}" equipada com sucesso!`);
-        openShop(); // Recarrega o menu
+        openShop(); 
     } else {
         logMessage("[ERRO] Habilidade não desbloqueada.");
     }
 }
 
 function buySkill(type, skillKey, cost) {
-    // Lógica de compra (mantida)
     if (player.skillPoints >= cost) {
         let skill;
         let unlockedSkills;
@@ -947,5 +993,6 @@ function checkEasterEgg() {
 
 // --- INICIALIZAÇÃO ---
 document.addEventListener('DOMContentLoaded', () => {
-    changeScreen('initial');
+    // Garante que o jogo comece na tela inicial.
+    changeScreen('initial'); 
 });

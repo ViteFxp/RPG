@@ -1,199 +1,286 @@
-/* --- ESTILO ASCII / PIXEL ART --- */
-.ascii-font, #log-box, input {
-    font-family: 'VT323', monospace !important; /* Fonte monoespaçada para simular ASCII */
-    font-size: 1.5em !important;
-}
-
+/* --- RESET E ESTILO GERAL --- */
 body {
-    font-family: 'Times New Roman', Times, serif;
     background-color: #1a1a1a;
-    color: #00ff00; /* Verde clássico de console/terminal */
+    color: #00ff00; /* Texto de console verde */
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
     margin: 0;
-    padding: 0;
+}
+
+/* Fonte ASCII para títulos */
+.ascii-font {
+    color: #ff00ff; /* Título em magenta para destaque */
+    text-shadow: 0 0 5px #ff00ff;
     text-align: center;
-}
-
-header {
-    background-color: #003300;
-    color: #00ff00;
-    padding: 15px 0;
-    border-bottom: 3px solid #005500;
     margin-bottom: 20px;
+    font-size: 1.8em;
 }
 
-.container {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 0 15px;
+#game-container {
+    width: 90%;
+    max-width: 800px;
+    border: 3px solid #00ff00;
+    box-shadow: 0 0 15px #00ff00;
+    padding: 20px;
+    background-color: #000000;
+    min-height: 600px;
+    position: relative;
 }
 
-/* --- Gerenciamento de Telas (O mais importante) --- */
-
+/* --- GERENCIAMENTO DE TELAS --- */
 .game-screen {
-    background-color: #111;
-    border: 5px solid #00ff00;
-    padding: 25px;
-    border-radius: 5px;
-    box-shadow: 0 0 15px #00ff0099;
-    /* Esconde todas as telas por padrão */
-    display: none; 
-    transition: opacity 0.5s ease-in-out;
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto; /* Permite scroll nas telas, se necessário */
 }
 
 .active-screen {
-    /* Mostra apenas a tela ativa */
-    display: block; 
-    opacity: 1;
+    display: block;
 }
 
-/* --- Geral da Área de Jogo --- */
-
-#game-area {
-    background-color: #000;
-    padding: 15px;
-    border-radius: 3px;
-}
-
-.stats-box {
-    background-color: #0a0a0a;
-    padding: 15px;
-    border-radius: 5px;
-    margin-bottom: 20px;
-    border: 1px solid #00aa00;
-    text-align: left;
-    color: #00ff00;
-}
-
-#log-box {
-    background-color: #000;
-    color: #00ff00;
-    padding: 15px;
-    height: 120px;
-    overflow-y: auto;
-    margin-bottom: 10px;
-    border: 1px dashed #00aa00;
-    text-align: left;
-}
-
-/* --- Botões e Ações --- */
-
-#action-area {
-    padding: 5px;
-}
-
+/* --- ESTILO DE BOTÕES --- */
 button {
-    background-color: #004400;
+    background-color: #006400; /* Verde escuro */
     color: #00ff00;
+    border: 1px solid #00ff00;
     padding: 10px 15px;
-    margin: 6px;
-    border: 2px solid #00ff00;
-    border-radius: 0; /* Estilo console */
+    margin: 5px;
     cursor: pointer;
+    font-family: 'Courier New', Courier, monospace;
+    transition: background-color 0.2s, color 0.2s;
     font-weight: bold;
-    transition: background-color 0.1s;
 }
 
 button:hover:not(:disabled) {
-    background-color: #006600;
-    color: #fff;
-    box-shadow: 0 0 5px #00ff00;
+    background-color: #00ff00;
+    color: #000000;
 }
 
 button:disabled {
-    opacity: 0.5;
+    background-color: #333;
+    color: #777;
     cursor: not-allowed;
+    border-color: #777;
 }
 
-input {
-    background-color: #000;
-    border: 1px solid #00aa00;
-    color: #00ff00;
-    padding: 8px;
-    margin-bottom: 15px;
+.btn-advance {
+    background-color: #00008b; /* Azul escuro */
+    border-color: #00bfff;
+    color: #00bfff;
+    margin-top: 20px;
 }
 
-/* Adicionado para alinhar input e botão na loja */
-.shop-input-area {
-    margin-bottom: 10px;
-}
-.shop-input-area input {
-    margin-right: 5px;
-    width: 250px;
+.btn-boss-ready {
+    background-color: #8b0000; /* Vermelho escuro */
+    border-color: #ff4500;
+    color: #ff4500;
 }
 
-/* --- ARENA DE BATALHA --- */
+.btn-target {
+    background-color: #333;
+    border-color: #aaa;
+    color: #fff;
+}
 
-#battle-display {
-    position: relative;
+.btn-target-active {
+    background-color: #ffd700; /* Amarelo (target) */
+    color: #000;
+    border-color: #ffa500;
+    box-shadow: 0 0 8px #ffd700;
+}
+
+.btn-return {
+    background-color: #444;
+    border-color: #eee;
+    color: #eee;
+    margin-top: 30px;
+}
+
+/* --- ÁREA DE LOG E AÇÕES --- */
+#game-area {
     display: flex;
-    justify-content: space-between;
+    flex-direction: column;
+    min-height: 300px;
+}
+
+#log-box {
+    border: 1px solid #00ff00;
+    padding: 10px;
+    margin-bottom: 10px;
+    height: 150px;
+    overflow-y: scroll;
+    background-color: #0a0a0a;
+    font-size: 0.9em;
+}
+
+#log-box p {
+    margin: 3px 0;
+}
+
+#action-area button {
+    display: block;
+    width: 90%;
+    max-width: 400px;
+    margin: 10px auto;
+}
+
+/* --- DISPLAY DE COMBATE (HUD) --- */
+#battle-display {
+    display: flex;
+    justify-content: space-around;
     align-items: flex-end;
-    height: 180px;
-    margin-bottom: 15px;
-    background: repeating-linear-gradient(45deg, #111, #111 5px, #000 5px, #000 10px); /* Padrão de fundo retro */
-    border: 2px solid #00ff00;
+    padding-bottom: 20px;
+    border-bottom: 1px dashed #00ff00;
+    margin-bottom: 20px;
+    height: 180px; /* Altura fixa para o display de batalha */
 }
 
-/* Sprites maiores para caberem o emoji ASCII */
-.sprite-icon {
-    font-size: 80px; 
-    line-height: 1;
+.hidden-hud {
+    display: none !important;
 }
 
-/* --- ESTILO HUD (Estilo Console) --- */
-
-.battle-hud-panel {
-    position: absolute;
-    width: 250px;
-    padding: 8px;
-    background-color: #001100;
-    border: 2px solid #00ff00;
-    border-radius: 0;
-    box-shadow: 0 0 3px #00ff00;
-    color: #00ff00;
+.character-model {
+    text-align: center;
+    width: 45%;
 }
 
-/* HUD do Inimigo: Canto Superior Direito */
-#hud-enemy {
-    top: 5px;
-    right: 5px;
+.sprite-display {
+    font-size: 3em;
+    height: 60px; /* Altura fixa para sprites */
 }
 
-/* HUD do Herói: Canto Inferior Esquerdo */
-#hud-hero {
-    bottom: 5px;
-    left: 5px;
+.character-hud {
+    background-color: #000;
+    border: 1px solid #00ff00;
+    padding: 5px;
+    margin-top: 5px;
 }
 
 .hp-bar-container {
-    width: 100%; height: 10px; background-color: #550000; border: 1px solid #00ff00;
+    background-color: #333;
+    border: 1px solid #fff;
+    height: 15px;
+    margin: 5px 0;
 }
+
 .hp-bar {
-    height: 100%; background-color: #ff0000; width: 100%; transition: width 0.5s ease-out;
+    height: 100%;
+    transition: width 0.3s ease-out;
 }
 
-/* --- ANIMAÇÕES --- */
-
-.enemy-model { position: absolute; right: 50px; }
-.hidden-enemy { opacity: 0; transform: translateX(50px); }
-.hidden-enemy-hud { opacity: 0; }
-
-@keyframes enemy-fade-in {
-    from { opacity: 0; transform: translateX(50px); }
-    to { opacity: 1; transform: translateX(0); }
+.hero-hp-bar {
+    background-color: #00ff00; /* HP do Herói */
 }
 
-.monster-appeared { animation: enemy-fade-in 0.5s ease-out forwards; }
-.attacking { animation: attack-move 0.3s ease-in-out; }
-.receiving-damage { animation: damage-shake 0.3s ease-in-out; }
+.enemy-hp-bar {
+    background-color: #ff4500; /* HP do Inimigo */
+}
+
+/* Animações de Combate */
+.attacking {
+    animation: attack-move 0.4s ease-in-out;
+}
+
+.receiving-damage {
+    animation: damage-flash 0.4s ease-out;
+}
+
+.monster-appeared {
+    animation: appear 1s ease-out;
+}
 
 @keyframes attack-move {
     0% { transform: translateX(0); }
-    50% { transform: translateX(40px) rotate(5deg); } 
+    50% { transform: translateX(20px) scale(1.1); }
     100% { transform: translateX(0); }
 }
-@keyframes damage-shake {
-    0%, 100% { transform: translateX(0); opacity: 1; }
-    25% { transform: translateX(-8px); opacity: 0.8; }
-    75% { transform: translateX(8px); opacity: 0.8; }
+
+@keyframes damage-flash {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(3) contrast(2); }
+    100% { filter: brightness(1); }
+}
+
+@keyframes appear {
+    0% { opacity: 0; transform: translateY(-50px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
+/* --- TELA DE TREINAMENTO/LOJA --- */
+#player-stats-summary {
+    border: 1px solid #00ff00;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+.shop-group {
+    border: 1px solid #00bfff;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #0a0a0a;
+}
+
+.shop-group h3 {
+    color: #00bfff;
+    margin-top: 0;
+    border-bottom: 1px dotted #00bfff;
+    padding-bottom: 5px;
+}
+
+.skill-tree-area button {
+    width: 100%;
+    text-align: left;
+    margin: 5px 0;
+    padding: 8px;
+}
+
+.skill-item {
+    border: 1px solid #00ff00;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.skill-item p {
+    margin: 5px 0;
+}
+
+.skill-item .desc {
+    font-size: 0.8em;
+    color: #aaa;
+}
+
+.skill-item button {
+    width: 150px;
+    float: right;
+    margin: 0;
+}
+
+.skill-item.equipped {
+    border-color: #ffd700;
+    background-color: #222;
+}
+
+.btn-bought {
+    background-color: #003300 !important;
+    border-color: #00ff00 !important;
+    color: #00ff00 !important;
+}
+
+.shop-input-area input {
+    background-color: #333;
+    border: 1px solid #00ff00;
+    color: #00ff00;
+    padding: 8px;
+    margin-right: 10px;
+    width: 60%;
+    font-family: 'Courier New', Courier, monospace;
 }
