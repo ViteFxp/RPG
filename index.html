@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chronicles of the Old Scroll</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;1&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;0;1&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="style.css">
 </head>
@@ -17,11 +17,9 @@
     </audio>
 
     <div id="game-container">
-        
-        <button id="music-toggle" onclick="toggleMusic()">🔊 Ativar Música</button>
 
         <div id="screen-initial" class="game-screen active-screen">
-            <div id="initial-area">
+            <button id="music-toggle" onclick="toggleMusic()">🔇 Tocar Música</button> <div id="initial-area">
                 <h1 class="title-font">O Chamado da Aventura</h1>
                 <p>O destino aguarda. Qual é o seu nome?</p>
                 <input type="text" id="name-input" placeholder="Sir/Lady Nome" maxlength="20">
@@ -34,7 +32,7 @@
             <div id="battle-display" class="hidden-hud">
                 
                 <div id="enemy-model" class="character-model hidden-enemy">
-                    <div id="hud-enemy" class="character-hud hidden-enemy-hud">
+                    <div id="hud-enemy" class="character-hud enemy-hud-style hidden-enemy-hud">
                         <span id="enemy-name-display">MONSTRO</span>
                         <div class="hp-bar-container">
                             <div id="enemy-hp-bar" class="hp-bar enemy-hp-bar"></div>
@@ -46,7 +44,7 @@
                 
                 <div id="hero-model" class="character-model">
                     <div id="hero-sprite" class="sprite-display">🛡️</div>
-                    <div class="character-hud">
+                    <div class="character-hud hero-hud-style">
                         <span id="hero-name-display">HERÓI</span>
                         <div class="hp-bar-container">
                             <div id="hero-hp-bar" class="hp-bar hero-hp-bar"></div>
@@ -91,15 +89,16 @@
         function toggleMusic() {
             if (isMusicPlaying) {
                 music.pause();
-                musicButton.textContent = '🔇 Música Desativada';
+                musicButton.textContent = '🔇 Tocar Música';
                 isMusicPlaying = false;
             } else {
                 music.muted = false; // Desmuta
+                music.volume = 0.5; // Define um volume inicial
                 music.play().catch(error => {
                     console.error("Erro ao tentar tocar a música:", error);
-                    musicButton.textContent = '❌ Erro ao Tocar Música';
+                    musicButton.textContent = '❌ Erro no Áudio';
                 });
-                musicButton.textContent = '🔊 Música Ativada';
+                musicButton.textContent = '🔊 Música Tocando';
                 isMusicPlaying = true;
             }
         }

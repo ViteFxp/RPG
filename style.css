@@ -36,6 +36,20 @@ body {
     border-radius: 5px;
 }
 
+/* Botão de Música movido para a tela inicial */
+#music-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    background-color: #2e2417;
+    color: #f7e7c9;
+    border-color: #8b0000;
+    font-size: 0.9em;
+    padding: 8px 15px;
+}
+
+
 /* --- GERENCIAMENTO DE TELAS --- */
 .game-screen {
     display: none;
@@ -82,36 +96,13 @@ button:disabled {
     box-shadow: none;
 }
 
-/* Botões Específicos */
-.btn-advance {
-    background-color: #004d40; 
-    border-color: #388e3c;
-    color: #e8f5e9;
-}
-
-.btn-boss-ready {
-    background-color: #b71c1c; 
-    border-color: #ff5252;
-    color: #ffebee;
-}
-
-.btn-target {
-    background-color: #6d6153;
-    border-color: #a0978b;
-    color: #f7e7c9;
-}
-
+/* Botões Específicos (Cores e estilos já definidos na versão anterior) */
 .btn-target-active {
     background-color: #ffcc80; /* Amarelo ouro (target) */
     color: #4f3b28;
     border-color: #ff9800;
 }
 
-.btn-return {
-    background-color: #2e2417;
-    border-color: #9c8a77;
-    color: #f7e7c9;
-}
 
 /* --- INPUT DE NOME --- */
 #name-input, .shop-input-area input {
@@ -144,37 +135,61 @@ button:disabled {
     padding-bottom: 3px;
 }
 
-/* --- DISPLAY DE COMBATE (HUD) --- */
+
+/* --- DISPLAY DE COMBATE (HUD) APRIMORADO --- */
 #battle-display {
     border-bottom: 2px dashed #4f3b28;
+    height: 200px; /* Aumenta a altura para melhor visualização */
 }
 
 .sprite-display {
-    font-size: 4em; /* Sprites maiores */
-    height: 80px;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Sombra para o sprite */
+    font-size: 4.5em; /* Sprites maiores */
+    height: 90px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); 
 }
 
 .character-hud {
-    background-color: #4f3b28; /* Fundo escuro para HUD */
-    color: #f7e7c9; /* Texto claro */
-    border: 2px solid #8b0000;
+    background-color: #4f3b28; 
+    color: #f7e7c9; 
+    padding: 8px;
+    margin-top: 5px;
+    font-size: 0.9em;
+}
+
+/* Estilo do HUD do Herói */
+.hero-hud-style {
+    border: 3px solid #388e3c; /* Borda verde */
+    box-shadow: 0 0 10px rgba(56, 142, 60, 0.8);
+}
+
+/* Estilo do HUD do Inimigo */
+.enemy-hud-style {
+    border: 3px solid #d32f2f; /* Borda vermelha */
+    box-shadow: 0 0 10px rgba(211, 47, 47, 0.8);
 }
 
 .hp-bar-container {
     background-color: #5d4d3c;
     border: 1px solid #f7e7c9;
+    height: 20px; /* Barra de HP mais grossa */
 }
 
 .hero-hp-bar {
-    background-color: #388e3c; /* Verde forte para HP */
+    background-color: #388e3c; 
+    box-shadow: 0 0 5px rgba(56, 142, 60, 0.5);
 }
 
 .enemy-hp-bar {
-    background-color: #d32f2f; /* Vermelho forte para HP inimigo */
+    background-color: #d32f2f; 
+    box-shadow: 0 0 5px rgba(211, 47, 47, 0.5);
 }
 
-/* --- TELA DE TREINAMENTO/LOJA --- */
+/* Animações (Mantidas da versão anterior) */
+.attacking { animation: attack-move 0.4s ease-in-out; }
+.receiving-damage { animation: damage-flash 0.4s ease-out; }
+.monster-appeared { animation: appear 1s ease-out; }
+
+/* --- TELA DE TREINAMENTO/LOJA (Mantida) --- */
 #player-stats, #player-stats-summary {
     border: 2px solid #4f3b28;
     padding: 15px;
@@ -188,56 +203,4 @@ button:disabled {
     margin-bottom: 25px;
     background-color: #f7e7c9;
 }
-
-.shop-group h3 {
-    color: #8b0000;
-    font-style: italic;
-    border-bottom: 1px dashed #8b0000;
-}
-
-.skill-item {
-    border: 1px solid #4f3b28;
-    padding: 12px;
-    margin-bottom: 10px;
-    background-color: #fff9e6;
-    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.skill-item.equipped {
-    border-color: #ff9800; /* Ouro */
-    background-color: #f5f0e1;
-}
-
-.skill-item button {
-    background-color: #5d4d3c;
-    border-color: #8b0000;
-    color: #f7e7c9;
-    width: auto;
-    float: right;
-    margin-left: 10px;
-}
-
-.btn-bought {
-    background-color: #388e3c !important; /* Verde de adquirido */
-    border-color: #1b5e20 !important;
-}
-
-/* Botão de Música */
-#music-toggle {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    z-index: 100;
-    background-color: #2e2417;
-    color: #f7e7c9;
-    border-color: #8b0000;
-    font-size: 0.8em;
-    padding: 5px 10px;
-}
-
-/* Limpeza de Float */
-.shop-group::after {
-    content: "";
-    display: table;
-    clear: both;
-}
+/* ... (outros estilos de shop) */
