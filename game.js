@@ -996,3 +996,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Garante que o jogo comece na tela inicial.
     changeScreen('initial'); 
 });
+// --- Musica ---
+let isMusicPlaying = false;
+const music = document.getElementById('background-music');
+const musicButton = document.getElementById('music-toggle');
+
+function toggleMusic() {
+    if (isMusicPlaying) {
+        music.pause();
+        musicButton.textContent = '🔇 Música Desativada';
+        isMusicPlaying = false;
+    } else {
+        music.muted = false; // Desmuta
+        music.play().catch(error => {
+            console.error("Erro ao tentar tocar a música:", error);
+            musicButton.textContent = '❌ Erro ao Tocar Música';
+            // Se o navegador barrar o autoplay, o usuário terá que clicar de novo.
+        });
+        musicButton.textContent = '🔊 Música Ativada';
+        isMusicPlaying = true;
+    }
+}

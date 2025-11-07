@@ -3,18 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RPG Textual em Console</title>
+    <title>Chronicles of the Old Scroll</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=IM+Fell+DW+Pica:ital@0;1&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <audio id="background-music" loop autoplay muted>
+        <source src="music.mp3" type="audio/mpeg">
+        Seu navegador não suporta o elemento de áudio.
+    </audio>
+
     <div id="game-container">
+        
+        <button id="music-toggle" onclick="toggleMusic()">🔊 Ativar Música</button>
 
         <div id="screen-initial" class="game-screen active-screen">
             <div id="initial-area">
-                <h1 class="ascii-font">BEM-VINDO(A) AO RPG TEXTUAL</h1>
+                <h1 class="title-font">O Chamado da Aventura</h1>
                 <p>O destino aguarda. Qual é o seu nome?</p>
-                <input type="text" id="name-input" placeholder="Seu Nome de Herói" maxlength="20">
+                <input type="text" id="name-input" placeholder="Sir/Lady Nome" maxlength="20">
                 <button onclick="showClassSelection()">COMEÇAR JORNADA</button>
             </div>
         </div>
@@ -63,7 +73,7 @@
         </div>
 
         <div id="screen-shop" class="game-screen">
-            <h1 class="ascii-font">CENTRO DE TREINAMENTO & SKILL TREE</h1>
+            <h1 class="title-font">Salão do Treinamento Arcano</h1>
             <div id="player-stats-summary">
                 </div>
             <div id="shop-area">
@@ -73,5 +83,26 @@
     </div>
 
     <script src="game.js"></script>
+    <script>
+        let isMusicPlaying = false;
+        const music = document.getElementById('background-music');
+        const musicButton = document.getElementById('music-toggle');
+
+        function toggleMusic() {
+            if (isMusicPlaying) {
+                music.pause();
+                musicButton.textContent = '🔇 Música Desativada';
+                isMusicPlaying = false;
+            } else {
+                music.muted = false; // Desmuta
+                music.play().catch(error => {
+                    console.error("Erro ao tentar tocar a música:", error);
+                    musicButton.textContent = '❌ Erro ao Tocar Música';
+                });
+                musicButton.textContent = '🔊 Música Ativada';
+                isMusicPlaying = true;
+            }
+        }
+    </script>
 </body>
 </html>

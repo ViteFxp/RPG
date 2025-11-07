@@ -1,8 +1,8 @@
-/* --- RESET E ESTILO GERAL --- */
+/* --- RESET E FONTES MEDIEVAIS --- */
 body {
-    background-color: #1a1a1a;
-    color: #00ff00; /* Texto de console verde */
-    font-family: 'Courier New', Courier, monospace;
+    background-color: #2e2417; /* Fundo de madeira escura ou couro */
+    color: #4f3b28; /* Cor de tinta escura para o texto */
+    font-family: 'IM Fell DW Pica', serif; /* Fonte medieval/fantasia */
     display: flex;
     justify-content: center;
     align-items: center;
@@ -10,24 +10,30 @@ body {
     margin: 0;
 }
 
-/* Fonte ASCII para títulos */
-.ascii-font {
-    color: #ff00ff; /* Título em magenta para destaque */
-    text-shadow: 0 0 5px #ff00ff;
+/* Fonte para títulos principais */
+.title-font {
+    color: #8b0000; /* Vermelho escuro, cor de brasão */
+    text-shadow: 1px 1px 1px #4f3b28;
     text-align: center;
-    margin-bottom: 20px;
-    font-size: 1.8em;
+    margin-bottom: 25px;
+    font-size: 2.5em;
+    font-weight: 400;
+    font-style: italic;
+    border-bottom: 2px solid #4f3b28;
+    padding-bottom: 10px;
 }
 
 #game-container {
     width: 90%;
-    max-width: 800px;
-    border: 3px solid #00ff00;
-    box-shadow: 0 0 15px #00ff00;
-    padding: 20px;
-    background-color: #000000;
-    min-height: 600px;
+    max-width: 850px;
+    border: 10px solid #4f3b28; /* Borda grossa de madeira */
+    box-shadow: 5px 5px 15px rgba(0, 0, 0, 0.8);
+    padding: 30px;
+    background-color: #f7e7c9; /* Cor de pergaminho claro */
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><text x="50" y="50" font-size="20" fill="rgba(79, 59, 40, 0.1)" text-anchor="middle" dominant-baseline="middle">📜</text></svg>'); /* Textura leve de pergaminho */
+    min-height: 700px;
     position: relative;
+    border-radius: 5px;
 }
 
 /* --- GERENCIAMENTO DE TELAS --- */
@@ -38,249 +44,200 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    padding: 20px;
+    padding: 30px;
     box-sizing: border-box;
-    overflow-y: auto; /* Permite scroll nas telas, se necessário */
+    overflow-y: auto;
 }
 
 .active-screen {
     display: block;
 }
 
-/* --- ESTILO DE BOTÕES --- */
+/* --- ESTILO DE BOTÕES (Aprimorado) --- */
 button {
-    background-color: #006400; /* Verde escuro */
-    color: #00ff00;
-    border: 1px solid #00ff00;
-    padding: 10px 15px;
-    margin: 5px;
+    background-color: #4f3b28; /* Fundo de madeira/couro escuro */
+    color: #f7e7c9; /* Texto claro */
+    border: 2px solid #8b0000; /* Borda vermelha de brasão */
+    padding: 12px 18px;
+    margin: 6px;
     cursor: pointer;
-    font-family: 'Courier New', Courier, monospace;
-    transition: background-color 0.2s, color 0.2s;
+    font-family: 'IM Fell DW Pica', serif;
+    transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
     font-weight: bold;
+    text-transform: uppercase;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
 }
 
 button:hover:not(:disabled) {
-    background-color: #00ff00;
-    color: #000000;
+    background-color: #8b0000; /* Efeito de brasão ao passar o mouse */
+    color: #ffffff;
+    box-shadow: 3px 3px 8px rgba(0, 0, 0, 0.7);
 }
 
 button:disabled {
-    background-color: #333;
-    color: #777;
+    background-color: #d1c1a9;
+    color: #9c8a77;
     cursor: not-allowed;
-    border-color: #777;
+    border-color: #9c8a77;
+    box-shadow: none;
 }
 
+/* Botões Específicos */
 .btn-advance {
-    background-color: #00008b; /* Azul escuro */
-    border-color: #00bfff;
-    color: #00bfff;
-    margin-top: 20px;
+    background-color: #004d40; 
+    border-color: #388e3c;
+    color: #e8f5e9;
 }
 
 .btn-boss-ready {
-    background-color: #8b0000; /* Vermelho escuro */
-    border-color: #ff4500;
-    color: #ff4500;
+    background-color: #b71c1c; 
+    border-color: #ff5252;
+    color: #ffebee;
 }
 
 .btn-target {
-    background-color: #333;
-    border-color: #aaa;
-    color: #fff;
+    background-color: #6d6153;
+    border-color: #a0978b;
+    color: #f7e7c9;
 }
 
 .btn-target-active {
-    background-color: #ffd700; /* Amarelo (target) */
-    color: #000;
-    border-color: #ffa500;
-    box-shadow: 0 0 8px #ffd700;
+    background-color: #ffcc80; /* Amarelo ouro (target) */
+    color: #4f3b28;
+    border-color: #ff9800;
 }
 
 .btn-return {
-    background-color: #444;
-    border-color: #eee;
-    color: #eee;
-    margin-top: 30px;
+    background-color: #2e2417;
+    border-color: #9c8a77;
+    color: #f7e7c9;
 }
+
+/* --- INPUT DE NOME --- */
+#name-input, .shop-input-area input {
+    background-color: #fff9e6; /* Cor de pergaminho mais claro */
+    border: 1px solid #4f3b28;
+    color: #4f3b28;
+    padding: 10px;
+    margin: 15px 0;
+    width: 80%;
+    font-family: 'IM Fell DW Pica', serif;
+    font-size: 1.1em;
+}
+
 
 /* --- ÁREA DE LOG E AÇÕES --- */
-#game-area {
-    display: flex;
-    flex-direction: column;
-    min-height: 300px;
-}
-
 #log-box {
-    border: 1px solid #00ff00;
-    padding: 10px;
-    margin-bottom: 10px;
-    height: 150px;
+    border: 2px solid #4f3b28;
+    padding: 15px;
+    margin-bottom: 15px;
+    height: 180px;
     overflow-y: scroll;
-    background-color: #0a0a0a;
-    font-size: 0.9em;
+    background-color: #fff9e6;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.1);
+    font-size: 1em;
 }
 
 #log-box p {
-    margin: 3px 0;
-}
-
-#action-area button {
-    display: block;
-    width: 90%;
-    max-width: 400px;
-    margin: 10px auto;
+    margin: 5px 0;
+    border-bottom: 1px dotted rgba(79, 59, 40, 0.3);
+    padding-bottom: 3px;
 }
 
 /* --- DISPLAY DE COMBATE (HUD) --- */
 #battle-display {
-    display: flex;
-    justify-content: space-around;
-    align-items: flex-end;
-    padding-bottom: 20px;
-    border-bottom: 1px dashed #00ff00;
-    margin-bottom: 20px;
-    height: 180px; /* Altura fixa para o display de batalha */
-}
-
-.hidden-hud {
-    display: none !important;
-}
-
-.character-model {
-    text-align: center;
-    width: 45%;
+    border-bottom: 2px dashed #4f3b28;
 }
 
 .sprite-display {
-    font-size: 3em;
-    height: 60px; /* Altura fixa para sprites */
+    font-size: 4em; /* Sprites maiores */
+    height: 80px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5); /* Sombra para o sprite */
 }
 
 .character-hud {
-    background-color: #000;
-    border: 1px solid #00ff00;
-    padding: 5px;
-    margin-top: 5px;
+    background-color: #4f3b28; /* Fundo escuro para HUD */
+    color: #f7e7c9; /* Texto claro */
+    border: 2px solid #8b0000;
 }
 
 .hp-bar-container {
-    background-color: #333;
-    border: 1px solid #fff;
-    height: 15px;
-    margin: 5px 0;
-}
-
-.hp-bar {
-    height: 100%;
-    transition: width 0.3s ease-out;
+    background-color: #5d4d3c;
+    border: 1px solid #f7e7c9;
 }
 
 .hero-hp-bar {
-    background-color: #00ff00; /* HP do Herói */
+    background-color: #388e3c; /* Verde forte para HP */
 }
 
 .enemy-hp-bar {
-    background-color: #ff4500; /* HP do Inimigo */
-}
-
-/* Animações de Combate */
-.attacking {
-    animation: attack-move 0.4s ease-in-out;
-}
-
-.receiving-damage {
-    animation: damage-flash 0.4s ease-out;
-}
-
-.monster-appeared {
-    animation: appear 1s ease-out;
-}
-
-@keyframes attack-move {
-    0% { transform: translateX(0); }
-    50% { transform: translateX(20px) scale(1.1); }
-    100% { transform: translateX(0); }
-}
-
-@keyframes damage-flash {
-    0% { filter: brightness(1); }
-    50% { filter: brightness(3) contrast(2); }
-    100% { filter: brightness(1); }
-}
-
-@keyframes appear {
-    0% { opacity: 0; transform: translateY(-50px); }
-    100% { opacity: 1; transform: translateY(0); }
+    background-color: #d32f2f; /* Vermelho forte para HP inimigo */
 }
 
 /* --- TELA DE TREINAMENTO/LOJA --- */
-#player-stats-summary {
-    border: 1px solid #00ff00;
-    padding: 10px;
+#player-stats, #player-stats-summary {
+    border: 2px solid #4f3b28;
+    padding: 15px;
     margin-bottom: 20px;
+    background-color: #fff9e6;
 }
 
 .shop-group {
-    border: 1px solid #00bfff;
-    padding: 15px;
-    margin-bottom: 20px;
-    background-color: #0a0a0a;
+    border: 2px solid #8b0000;
+    padding: 20px;
+    margin-bottom: 25px;
+    background-color: #f7e7c9;
 }
 
 .shop-group h3 {
-    color: #00bfff;
-    margin-top: 0;
-    border-bottom: 1px dotted #00bfff;
-    padding-bottom: 5px;
-}
-
-.skill-tree-area button {
-    width: 100%;
-    text-align: left;
-    margin: 5px 0;
-    padding: 8px;
+    color: #8b0000;
+    font-style: italic;
+    border-bottom: 1px dashed #8b0000;
 }
 
 .skill-item {
-    border: 1px solid #00ff00;
-    padding: 10px;
+    border: 1px solid #4f3b28;
+    padding: 12px;
     margin-bottom: 10px;
-}
-
-.skill-item p {
-    margin: 5px 0;
-}
-
-.skill-item .desc {
-    font-size: 0.8em;
-    color: #aaa;
-}
-
-.skill-item button {
-    width: 150px;
-    float: right;
-    margin: 0;
+    background-color: #fff9e6;
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .skill-item.equipped {
-    border-color: #ffd700;
-    background-color: #222;
+    border-color: #ff9800; /* Ouro */
+    background-color: #f5f0e1;
+}
+
+.skill-item button {
+    background-color: #5d4d3c;
+    border-color: #8b0000;
+    color: #f7e7c9;
+    width: auto;
+    float: right;
+    margin-left: 10px;
 }
 
 .btn-bought {
-    background-color: #003300 !important;
-    border-color: #00ff00 !important;
-    color: #00ff00 !important;
+    background-color: #388e3c !important; /* Verde de adquirido */
+    border-color: #1b5e20 !important;
 }
 
-.shop-input-area input {
-    background-color: #333;
-    border: 1px solid #00ff00;
-    color: #00ff00;
-    padding: 8px;
-    margin-right: 10px;
-    width: 60%;
-    font-family: 'Courier New', Courier, monospace;
+/* Botão de Música */
+#music-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 100;
+    background-color: #2e2417;
+    color: #f7e7c9;
+    border-color: #8b0000;
+    font-size: 0.8em;
+    padding: 5px 10px;
+}
+
+/* Limpeza de Float */
+.shop-group::after {
+    content: "";
+    display: table;
+    clear: both;
 }
