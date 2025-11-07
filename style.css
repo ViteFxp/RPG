@@ -112,6 +112,15 @@ input {
     margin-bottom: 15px;
 }
 
+/* Adicionado para alinhar input e botão na loja */
+.shop-input-area {
+    margin-bottom: 10px;
+}
+.shop-input-area input {
+    margin-right: 5px;
+    width: 250px;
+}
+
 /* --- ARENA DE BATALHA --- */
 
 #battle-display {

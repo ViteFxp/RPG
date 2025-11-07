@@ -8,18 +8,21 @@ const ZONAS = [
     { nome: "CASTELO DO CAOS", lvlMin: 20, inimigos: ["GUARDA NEGRO", "DEMÔNIO MENOR", "VAMPIRO"], boss: { nome: "O TIRANO SUPREMO", sprite: "😈" }, sprite: "🏰" }
 ];
 
+// --- BALANCEAMENTO DE CLASSE ---
 const BASE_STATS = {
-    'GUERREIRO': { hp: 150, atk: 20, def: 10, sprite: '🛡️' },
-    'MAGO': { hp: 100, atk: 25, def: 5, sprite: '🔮' },
-    'ARQUEIRO': { hp: 110, atk: 22, def: 7, sprite: '🏹' }
+    'GUERREIRO': { hp: 160, atk: 21, def: 12, sprite: '🛡️' }, // Mais HP e DEF
+    'MAGO': { hp: 110, atk: 26, def: 6, sprite: '🔮' },       // Alto ATK, baixa DEF
+    'ARQUEIRO': { hp: 120, atk: 23, def: 8, sprite: '🏹' }     // Equilibrado
 };
 
 let player;
 let currentEnemy;
 let isAnimating = false;
 let zonaAtual = 0;
+let turnCount = 0; // Novo: Contador de turnos para o cooldown
+const SPECIAL_COOLDOWN = 3; // Cooldown de 3 turnos
 
-// --- CLASSE JOGADOR e INIMIGO (Mantidas) ---
+// --- CLASSE JOGADOR e INIMIGO (Modificadas) ---
 class Player {
     constructor(name, className) {
         const stats = BASE_STATS[className];
@@ -36,18 +39,18 @@ class Player {
         this.potions = 2;
         this.sprite = stats.sprite;
         this.statPoints = 0;
+        this.lastSpecialTurn = -SPECIAL_COOLDOWN; // Inicializa para poder usar na primeira rodada
     }
 
     levelUp() {
         this.lvl++;
         this.exp -= this.expToNextLvl;
         this.expToNextLvl = Math.floor(this.expToNextLvl * 1.5);
-        this.statPoints += 5;
-        this.hpMax += 10;
+        this.statPoints += 6; // Balanceamento: +6 pontos por nível
+        this.hpMax += 12; 
         this.hp = this.hpMax;
         logMessage(`[LVL UP] VOCÊ ALCANÇOU O NÍVEL ${this.lvl}! PONTOS GANHOS.`);
         
-        // Se subir de nível no menu principal, vai para a tela de stats
         if (!currentEnemy) {
             changeScreen('stats'); 
         }
@@ -59,15 +62,16 @@ class Enemy {
         const zona = ZONAS[zonaAtual];
         let name, hpBase, atkBase, sprite;
 
+        // --- BALANCEAMENTO DE INIMIGO ---
         if (isBoss) {
             name = zona.boss.nome;
-            hpBase = 50 + (lvl * 30);
-            atkBase = 15 + (lvl * 8);
+            hpBase = 70 + (lvl * 35); // Bosses mais fortes
+            atkBase = 18 + (lvl * 9); 
             sprite = zona.boss.sprite;
         } else {
             name = zona.inimigos[Math.floor(Math.random() * zona.inimigos.length)];
-            hpBase = 30 + (lvl * 18);
-            atkBase = 10 + (lvl * 4);
+            hpBase = 35 + (lvl * 20); // Inimigos mais robustos
+            atkBase = 12 + (lvl * 5);
             sprite = '👹';
         }
 
@@ -75,16 +79,16 @@ class Enemy {
         this.lvl = lvl;
         this.hp = hpBase;
         this.attack = atkBase;
-        this.defense = 3 + lvl;
-        this.expReward = (isBoss ? 200 : 60) + (lvl * (isBoss ? 40 : 20));
-        this.goldReward = Math.floor(Math.random() * (isBoss ? 50 : 15) * lvl) + 10;
+        this.defense = 4 + lvl; 
+        this.expReward = (isBoss ? 250 : 75) + (lvl * (isBoss ? 50 : 25)); // Recompensas de EXP e Gold ajustadas
+        this.goldReward = Math.floor(Math.random() * (isBoss ? 60 : 20) * lvl) + 15;
         this.isBoss = isBoss;
         this.sprite = sprite;
         this.initialHp = hpBase;
     }
 }
 
-// --- GERENCIAMENTO DE TELAS ---
+// --- GERENCIAMENTO DE TELAS (Mantidas) ---
 
 function changeScreen(screenId) {
     const screens = document.querySelectorAll('.game-screen');
@@ -98,16 +102,20 @@ function changeScreen(screenId) {
     }
 }
 
-// --- FUNÇÕES DE INTERFACE ---
+// --- FUNÇÕES DE INTERFACE (Modificada para mostrar cooldown) ---
 
 function updateStats() {
     if (!player) return;
 
+    // Calcula o Cooldown
+    const turnsRemaining = Math.max(0, SPECIAL_COOLDOWN - (turnCount - player.lastSpecialTurn));
+    const cooldownStatus = turnsRemaining > 0 ? `(CD: ${turnsRemaining})` : `(PRONTO!)`;
+    
     // --- Atualização do Status Box (Geral) ---
     const statsHtml = `
         <p>ZONA: ${ZONAS[zonaAtual].sprite} ${ZONAS[zonaAtual].nome} | NÍVEL: ${player.lvl} (PONTOS: ${player.statPoints})</p>
         <p>NOME: ${player.name} | CLASSE: ${player.class} | OURO: ${player.gold} | POÇÕES: ${player.potions}</p>
-        <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense} | EXP: ${player.exp}/${player.expToNextLvl}</p>
+        <p>HP: ${Math.max(0, player.hp)}/${player.hpMax} | ATK: ${player.attack} | DEF: ${player.defense} | EXP: ${player.exp}/${player.expToNextLvl} | SKILL: ${cooldownStatus}</p>
     `;
     
     // Atualiza o painel geral
@@ -193,7 +201,7 @@ function startGame(name, className) {
     document.getElementById('battle-display').style.display = 'flex';
     logMessage(`[INÍCIO] O ${className} ${name} INICIA A AVENTURA!`);
     updateStats();
-    changeScreen('main'); // Vai para a tela principal
+    changeScreen('main'); 
     showMainMenu();
 }
 
@@ -205,9 +213,9 @@ function showStatDistribution() {
     
     const buttons = `
         <p>PONTOS RESTANTES: <span style="color:#ff0000">${player.statPoints}</span></p>
-        <button class="btn-stat" onclick="distributePoint('HP', 10)">+10 HP MÁX (ATUAL: ${currentHpDisplay})</button>
-        <button class="btn-stat" onclick="distributePoint('ATK', 3)">+3 ATK (ATUAL: ${player.attack})</button>
-        <button class="btn-stat" onclick="distributePoint('DEF', 2)">+2 DEF (ATUAL: ${player.defense})</button>
+        <button class="btn-stat" onclick="distributePoint('HP', 15)">+15 HP MÁX (ATUAL: ${currentHpDisplay})</button>
+        <button class="btn-stat" onclick="distributePoint('ATK', 4)">+4 ATK (ATUAL: ${player.attack})</button>
+        <button class="btn-stat" onclick="distributePoint('DEF', 3)">+3 DEF (ATUAL: ${player.defense})</button>
         <br>
         <button onclick="showMainMenu()" ${player.statPoints > 0 ? 'disabled' : ''}>CONTINUAR JORNADA</button>
     `;
@@ -238,7 +246,7 @@ function distributePoint(stat, amount) {
 }
 
 function showMainMenu() {
-    changeScreen('main'); // Vai para a tela principal
+    changeScreen('main'); 
     if (player.statPoints > 0) {
         showStatDistribution();
         return;
@@ -276,6 +284,8 @@ function advanceZone() {
 }
 
 function hunt(isBoss) {
+    turnCount = 0; // Reinicia o contador de turnos ao iniciar uma nova batalha
+    
     const zona = ZONAS[zonaAtual];
     let lvlMonstro = zona.lvlMin + Math.floor(Math.random() * 3);
     
@@ -296,9 +306,16 @@ function showBattleMenu() {
     updateStats();
     if (isAnimating) return;
     
+    const turnsRemaining = Math.max(0, SPECIAL_COOLDOWN - (turnCount - player.lastSpecialTurn));
+    const isSpecialReady = turnsRemaining === 0;
+
+    const specialButtonText = isSpecialReady 
+        ? `2. HABILIDADE ÚNICA` 
+        : `2. HABILIDADE ÚNICA (CD: ${turnsRemaining})`;
+
     const buttons = `
         <button onclick="playerAttack('normal')">1. ATK BÁSICO</button>
-        <button onclick="playerAttack('special')">2. HABILIDADE ÚNICA</button>
+        <button onclick="playerAttack('special')" ${!isSpecialReady ? 'disabled' : ''}>${specialButtonText}</button>
         <button onclick="usePotion()">3. USAR POÇÃO (${player.potions})</button>
         <button onclick="attemptToFlee()">4. TENTAR FUGIR</button>
     `;
@@ -310,6 +327,8 @@ function showBattleMenu() {
 function attemptToFlee() {
     if (isAnimating) return;
     isAnimating = true;
+    turnCount++; // A fuga conta como um turno
+    updateStats();
 
     if (currentEnemy.isBoss) {
         logMessage("[FUGA] É IMPOSSÍVEL FUGIR DE UM CHEFE!");
@@ -333,7 +352,19 @@ function attemptToFlee() {
 
 function playerAttack(type) {
     if (!currentEnemy || isAnimating) return;
+    
+    // Verifica cooldown
+    if (type === 'special') {
+        const turnsRemaining = SPECIAL_COOLDOWN - (turnCount - player.lastSpecialTurn);
+        if (turnsRemaining > 0) {
+            logMessage(`[ERRO] HABILIDADE EM COOLDOWN. FALTAM ${turnsRemaining} TURNOS.`);
+            return;
+        }
+        player.lastSpecialTurn = turnCount; // Reseta o cooldown
+    }
+    
     isAnimating = true;
+    turnCount++; // Conta o turno do jogador
     triggerAnimation('hero-sprite', 'attacking');
 
     let damage = 0;
@@ -342,12 +373,12 @@ function playerAttack(type) {
         damage = player.attack + Math.floor(Math.random() * 8);
         logMessage(`[AÇÃO] ${player.class} USA ATK BÁSICO.`);
     } else if (type === 'special') {
-        
         let msg = "";
         
+        // --- BALANCEAMENTO DE SKILLS ---
         if (player.class === 'GUERREIRO') { 
-            damage = player.attack + 20 + Math.floor(Math.random() * 10);
-            if (Math.random() < 0.1) {
+            damage = player.attack * 1.5 + Math.floor(Math.random() * 12); // Dano forte
+            if (Math.random() < 0.2) { // 20% de chance de Fúria (Dano x2)
                  damage *= 2;
                  msg = "[HABILIDADE] GUERREIRO ATIVOU FÚRIA! DANO DOBRADO!";
             } else {
@@ -356,14 +387,15 @@ function playerAttack(type) {
         }
         
         if (player.class === 'MAGO') { 
-            damage = player.attack + 30 + Math.floor(Math.random() * 15);
-            currentEnemy.defense = Math.max(0, currentEnemy.defense / 2); 
-            msg = "[HABILIDADE] MAGO LANÇA EXPLOSÃO ARCANA!";
+            damage = player.attack * 2 + Math.floor(Math.random() * 10); // Dano muito alto
+            const oldDef = currentEnemy.defense;
+            currentEnemy.defense = Math.max(0, currentEnemy.defense / 2); // Reduz DEF pela metade (efeito de 1 turno)
+            msg = `[HABILIDADE] MAGO LANÇA EXPLOSÃO ARCANA! DEFESA REDUZIDA (${oldDef} -> ${currentEnemy.defense.toFixed(1)})`;
         }
         
         if (player.class === 'ARQUEIRO') { 
-            damage = player.attack + 15 + Math.floor(Math.random() * 10);
-            if (Math.random() < 0.4) {
+            damage = player.attack * 1.2 + Math.floor(Math.random() * 8); 
+            if (Math.random() < 0.5) { // 50% de chance de acerto crítico (Dano x1.5)
                 damage = damage * 1.5;
                 msg = "[HABILIDADE] ARQUEIRO ACERTA TIRO PRECISO! (CRÍTICO)";
             } else {
@@ -378,8 +410,11 @@ function playerAttack(type) {
     currentEnemy.hp -= finalDamage;
     logMessage(`[DANO] CAUSOU ${finalDamage} DE DANO AO ${currentEnemy.name}!`);
     
+    // Reverte o efeito da habilidade do MAGO (redução de defesa) após o dano
     if (player.class === 'MAGO' && type === 'special') {
+         // Cria um novo inimigo temporário para obter a defesa base do nível
          currentEnemy.defense = new Enemy(currentEnemy.lvl, currentEnemy.isBoss).defense; 
+         logMessage(`[EFEITO] DEFESA do inimigo voltou ao normal: ${currentEnemy.defense}`);
     }
 
     triggerAnimation('enemy-sprite', 'receiving-damage'); 
@@ -398,11 +433,12 @@ function usePotion() {
     isAnimating = true;
 
     if (player.potions > 0) {
-        const heal = Math.floor(player.hpMax * 0.3) + 20;
+        const heal = Math.floor(player.hpMax * 0.35) + 30; // Balanceamento: Cura um pouco maior
         player.hp = Math.min(player.hpMax, player.hp + heal);
         player.potions--;
         logMessage(`[CURA] VOCÊ USOU POÇÃO E RECUPEROU ${heal} HP.`);
         updateStats();
+        turnCount++; // A poção conta como um turno
         setTimeout(enemyTurn, 500);
     } else {
         logMessage("[ERRO] SEM POÇÕES RESTANTES!");
@@ -482,7 +518,12 @@ function openShop() {
     
     const buttons = `
         <p>SEU OURO: <span id="player-gold-shop">${player.gold}</span></p>
+        <div class="shop-input-area">
+            <input type="text" id="easter-egg-input" placeholder="Código secreto (opcional)">
+            <button onclick="checkEasterEgg()">🔍 USAR CÓDIGO</button>
+        </div>
         <button onclick="buyItem('potion', ${potionPrice})">COMPRAR POÇÃO (${potionPrice} OURO)</button>
+        <button onclick="showMainMenu()">VOLTAR AO MENU</button>
     `;
     document.getElementById('shop-area').innerHTML = buttons;
     updateStats();
@@ -499,3 +540,34 @@ function buyItem(item, price) {
     updateStats();
     openShop(); // Recarrega o menu da loja
 }
+
+// --- EASTER EGG ---
+function checkEasterEgg() {
+    const code = document.getElementById('easter-egg-input').value.toUpperCase().trim();
+    document.getElementById('easter-egg-input').value = ""; // Limpa o campo
+    
+    if (code === "GODMODE") {
+        player.hpMax += 500;
+        player.hp = player.hpMax;
+        player.attack += 100;
+        player.defense += 50;
+        player.gold += 1000;
+        player.potions += 10;
+        logMessage(`[CHEAT ATIVADO] 🌟 O PODER DE "GODMODE" FOI CONCEDIDO!`);
+        logMessage(`HP, ATK, DEF, OURO e POÇÕES AUMENTADOS BRUTALMENTE!`);
+        updateStats();
+    } else if (code === "MERCADOR") {
+        logMessage(`[MERCADOR] Você tentou um código, mas não era esse! 😉`);
+    } else if (code.length > 0) {
+        logMessage(`[CÓDIGO] "${code}" não é válido.`);
+    } else {
+         logMessage(`[CÓDIGO] O campo estava vazio.`);
+    }
+    openShop();
+}
+
+// --- INICIALIZAÇÃO (Manter para garantir que o input de nome esteja pronto) ---
+document.addEventListener('DOMContentLoaded', () => {
+    // Garante que o input de nome está visível na primeira tela
+    changeScreen('initial');
+});
